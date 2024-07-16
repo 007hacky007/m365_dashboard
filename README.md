@@ -1,3 +1,4 @@
+test
 # Xiaomi M365 Display [This project is no longer maintained, because I don't have a platform to test it.]
 
 I will be pushing pull requests, if you improve this in any way possible feel free to create a push request.
