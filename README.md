@@ -6,6 +6,7 @@ Fixed default wheel size to be 8.5 in defines.h
 The pressed brake flag threshold was set too high and could not enter the menu because of this - fixed  
 I used Nano instead of Pro Mini, but i had to cut the RX/TX legs of the CH340, otherwise it didn't work. Nano has 3.3V output, you can power the OLED from there  
 If you don't want to install old version of Arduino IDE, download the hex files from releases (no bootloader included). You can burn the hex files to Arduino using Avrdudess and e.g.USBtinyISP. If it's not working, in Avrdudess' options you can set the exe and the conf to the provided files  
+A nice 3D printed case here https://www.thingiverse.com/thing:3646680
 
 # Xiaomi M365 Display [This project is no longer maintained, because I don't have a platform to test it.]
 
