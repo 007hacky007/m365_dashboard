@@ -49,7 +49,7 @@ bool M365Settings = false;
 uint8_t menuPos = 0;
 uint8_t sMenuPos = 0;
 
-bool cfgCruise = false;
+bool cfgCruise = true;
 bool cfgTailight = false;
 uint8_t cfgKERS = 0;
 
@@ -67,7 +67,7 @@ SSD1306AsciiSpi display;
 SSD1306AsciiWire display;
 #endif
 
-bool WheelSize = true; //whell 8,5"
+bool WheelSize = false; //wheel 8,5"
 
 uint8_t WDTcounts = 0;
 void(* resetFunc) (void) = 0;
