@@ -4,7 +4,8 @@ Fixed random characters by commenting ru language in defines.h
 Cruise control on by default in defines.h  
 Fixed default wheel size to be 8.5 in defines.h  
 The pressed brake flag threshold was set too high and could not enter the menu because of this - fixed  
-I used Nano instead of Pro Mini, but i had to cut the RX/TX legs of the CH340, otherwise it didn't work. Nano has 3.3V output, you can power the OLED form there  
+I used Nano instead of Pro Mini, but i had to cut the RX/TX legs of the CH340, otherwise it didn't work. Nano has 3.3V output, you can power the OLED from there  
+If you don't want to install old version of Arduino IDE, download the hex files from releases. You can burn the hex files to Arduino using Avrdudess. If it's not working, in Avrdudess' options you can set the exe and the conf to the provided files  
 
 # Xiaomi M365 Display [This project is no longer maintained, because I don't have a platform to test it.]
 
@@ -32,7 +33,8 @@ I'd recommend you to use Arduino 1.6.6
 https://www.arduino.cc/en/Main/OldSoftwareReleases  
 
 # Physical Connections  
-![alt text](https://camo.githubusercontent.com/a912641249173768ae60670e843c62294d06da4f/68747470733a2f2f656c656374726f2e636c75622f646174612f666f72756d2f6d657373616765732f34323633312f696d616765732f31313636302d313238302e6a7067)  
+
+![dashboard](https://github.com/user-attachments/assets/e0b65522-345c-487b-b7f3-a1857144189d)
 
 # Updating M365 firmware / Disabling the Dashboard
 Turn on the scooter and immediately engage and hold the throttle and brake before the logo disappears from the dashboard LCD. You will enter on dashboard disabled mode.
