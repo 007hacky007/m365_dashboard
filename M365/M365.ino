@@ -265,7 +265,7 @@ void displayFSM() {
   }
 
   if ((c_speed <= 200) || Settings) {
-    if (S20C00HZ65.brake > 130)
+    if (S20C00HZ65.brake > 60)
     brakeVal = 1;
       else
       if (S20C00HZ65.brake < 50)
