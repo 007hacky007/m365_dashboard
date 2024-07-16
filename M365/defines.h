@@ -1,8 +1,8 @@
 #include "WatchDog.h"
 
 // Select either SPI or I2C(Wire) Display Mode
-#define DISPLAY_SPI
-//#define DISPLAY_I2C
+//#define DISPLAY_SPI
+#define DISPLAY_I2C
 
 //#define US_Version
 
