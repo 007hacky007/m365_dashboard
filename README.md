@@ -1,3 +1,10 @@
+Fork notes:
+Display changed from SPI to I2C in defines.h
+Fixed random characters by commenting ru language in defines.h
+cruise on by default in defines.h
+fixed default wheel size to be 8.5 in defines.h
+The pressed brake flag threshold was set too high and could not enter the menu because of this
+
 # Xiaomi M365 Display [This project is no longer maintained, because I don't have a platform to test it.]
 
 I will be pushing pull requests, if you improve this in any way possible feel free to create a push request.
@@ -51,11 +58,7 @@ https://www.youtube.com/watch?v=JQUNXCyj2Fs
 # UI
 UI pictures from version 0.2  
 
-Fork notes:
-Display changed from SPI to I2C in defines.h
-Fixed random characters by commenting ru language in defines.h
-cruise on by default in defines.h
-fixed default wheel size to be 8.5 in defines.h
+
 ![alt text](https://i.imgur.com/8ekMdIo.jpg)  
 ![alt text](https://i.imgur.com/AHLVTcu.jpg)  
 
