@@ -1,6 +1,6 @@
 Fork notes:  
 Display changed from SPI to I2C in defines.h  
-Removed RuSSian language, because fuck RuSSia  
+Removed RuSSian language, because fuck RuSSia 
 The pressed brake flag threshold was set too high and could not enter the menu because of this - fixed  
 I used Nano instead of Pro Mini, but i had to cut the RX/TX legs of the CH340, otherwise it didn't work. Nano has 3.3V output, you can power the OLED from there  
 If you don't want to install old version of Arduino IDE, download the hex files from releases (no bootloader included). You can burn the hex files to Arduino using Avrdudess and e.g.USBtinyISP. If it's not working, in Avrdudess' options you can set the exe and the conf to the provided files  
@@ -30,6 +30,44 @@ Please install the libraries I provided in the files, install them to you arduin
   C:\Users\\%username%\Documents\Arduino\libraries  
 I'd recommend you to use Arduino 1.6.6  
 https://www.arduino.cc/en/Main/OldSoftwareReleases  
+
+## What you need to install/configure in Arduino IDE 2.x
+
+If you prefer using a current IDE instead of the old 1.6.6, this sketch builds fine on Arduino IDE 2.x with the following setup:
+
+- Boards
+  - Install “Arduino AVR Boards” from Boards Manager.
+  - Select the board you actually use:
+    - Arduino Pro Mini (ATmega328P, pick 3.3V/8 MHz or 5V/16 MHz as appropriate), or
+    - Arduino Nano (ATmega328P). Many Nanos need “Processor: ATmega328P (Old Bootloader)”.
+
+- Libraries
+  - SSD1306Ascii (by Bill Greiman) via Library Manager, or use the provided ZIP under `libraries/SSD1306Ascii.zip` (Sketch > Include Library > Add .ZIP Library...).
+  - WatchDog 1.2.0 via the provided `libraries/WatchDog-1.2.0.zip` (Add .ZIP Library...).
+  - EEPROM is part of the AVR core; no separate install needed.
+
+- Open `M365/M365.ino`, select the correct Port, then Verify/Upload.
+
+## Notes for common pitfalls
+
+- OLED type/address
+  - Default is I2C SSD1306 at address 0x3C (`DISPLAY_I2C` + `OLED_I2C_ADDRESS 0x3C` in `M365/defines.h`).
+  - For 1.3" SH1106 modules, switch the `display.begin` line in code (already present as a commented alternative) and make sure the I2C address matches your module.
+
+- SPI vs I2C
+  - The fork defaults to I2C. If you want SPI, uncomment `DISPLAY_SPI` and wire the pins defined in `defines.h` (`PIN_CS/PIN_DC/PIN_RST/...`). Only enable one of I2C or SPI at a time.
+
+- Nano “Old Bootloader”
+  - Many classic Nanos need “ATmega328P (Old Bootloader)” selected; otherwise uploads fail or time out.
+
+- I2C stability
+  - The sketch sets Wire timeouts (when supported) and auto-recovers the bus if it gets stuck. If you still see freezes, keep I2C at 100 kHz and avoid long cables.
+
+- Serial BUS half‑duplex
+  - On ATmega328P boards the code briefly disables RX during writes to reduce bus noise. On other MCUs those macros are ignored; prefer 328P-based boards for best results.
+
+- Powering the OLED
+  - A 0.96" SSD1306 typically runs fine from the Nano’s 3.3V pin. Some 1.3" modules may draw more; use 5V with the module’s onboard regulator if required (check your module specs).
 
 # Physical Connections  
 

@@ -503,7 +503,7 @@ void fsBattInfo() {
   
   int16_t v;
   int16_t * ptr;
-  int * ptr2;
+  int16_t * ptr2;
   ptr = (int16_t*)&S25C40;                 // Pointer to cell data
   ptr2 = ptr + 5;                          // Pointer to cells 5-9
   
@@ -1494,7 +1494,7 @@ void processPacket(uint8_t* data, uint8_t len) {
 
   // Set flag to update display if this was a command we're actively querying
   for (uint8_t i = 0; i < sizeof(_commandsWeWillSend); i++)
-    if (AnswerHeader.cmd == _q[_commandsWeWillSend[i]]) {
+    if (AnswerHeader.cmd == pgm_read_byte_near(&_q[_commandsWeWillSend[i]])) {
       _NewDataFlag = 1;                  // Trigger display update
       break;
     }

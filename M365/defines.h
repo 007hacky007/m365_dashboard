@@ -1,3 +1,9 @@
+#include <Arduino.h>
+#if defined(ARDUINO_ARCH_AVR)
+  #include <avr/pgmspace.h>
+#else
+  #include <pgmspace.h>
+#endif
 #include "WatchDog.h"
 
 // ============================================================================
@@ -126,8 +132,15 @@ void(* resetFunc) (void) = 0;        // Function pointer for software reset
 // ============================================================================
 
 #define XIAOMI_PORT Serial           // Use hardware serial for M365 communication
-#define RX_DISABLE UCSR0B &= ~_BV(RXEN0);  // Disable UART receive (for transmission)
-#define RX_ENABLE  UCSR0B |=  _BV(RXEN0);   // Enable UART receive
+// Safely guard AVR-specific UART RX enable/disable for portability with newer cores
+#if defined(UCSR0B) && defined(RXEN0)
+  #define RX_DISABLE UCSR0B &= ~_BV(RXEN0);
+  #define RX_ENABLE  UCSR0B |=  _BV(RXEN0);
+#else
+  // Non-AVR or cores without UCSR0B: no-op to keep build working
+  #define RX_DISABLE
+  #define RX_ENABLE
+#endif
 
 // Query structure for sending commands to M365
 struct {
