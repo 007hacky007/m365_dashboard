@@ -36,12 +36,7 @@
 // ============================================================================
 
 #include "fonts/m365.h"        // Custom M365 icons and symbols
-// Russian font support (commented out due to display issues)
-//#if Language == RU
-//  #include "fonts/System5x7ru.h"
-//#else
-  #include "fonts/System5x7mod.h"  // Modified system font
-//#endif
+#include "fonts/System5x7mod.h"  // Modified system font
 #include "fonts/stdNumb.h"     // Standard numbers font
 #include "fonts/bigNumb.h"     // Large numbers font for speedometer
 

@@ -96,7 +96,7 @@ Controls actual scooter parameters:
 ### Multi-Language Support
 Supports multiple languages:
 - English (default)
-- French, German, Russian, Spanish, Czech, Italian
+- French, German, Spanish, Czech, Italian
 
 ### Unit Conversion
 - **US Version**: Automatically converts km/h to mph and Celsius to Fahrenheit
