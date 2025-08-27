@@ -33,13 +33,14 @@ https://www.arduino.cc/en/Main/OldSoftwareReleases
 
 ## What you need to install/configure in Arduino IDE 2.x
 
-If you prefer using a current IDE instead of the old 1.6.6, this sketch builds fine on Arduino IDE 2.x with the following setup:
+If you prefer using a current IDE instead of the old 1.6.6, this sketch builds fine on Arduino IDE 2.x (ATmega328P and ESP32) with the following setup:
 
 - Boards
   - Install “Arduino AVR Boards” from Boards Manager.
   - Select the board you actually use:
     - Arduino Pro Mini (ATmega328P, pick 3.3V/8 MHz or 5V/16 MHz as appropriate), or
     - Arduino Nano (ATmega328P). Many Nanos need “Processor: ATmega328P (Old Bootloader)”.
+  - Optional: ESP32 (install the "esp32" core by Espressif from Boards Manager). Any common ESP32 devkit should work.
 
 - Libraries
   - SSD1306Ascii (by Bill Greiman) via Library Manager, or use the provided ZIP under `libraries/SSD1306Ascii.zip` (Sketch > Include Library > Add .ZIP Library...).
@@ -47,6 +48,19 @@ If you prefer using a current IDE instead of the old 1.6.6, this sketch builds f
   - EEPROM is part of the AVR core; no separate install needed.
 
 - Open `M365/M365.ino`, select the correct Port, then Verify/Upload.
+
+### ESP32 notes
+
+- UART pins
+  - By default the sketch uses UART1 with RX=GPIO16 and TX=GPIO17 for the scooter BUS.
+  - To change pins, define these macros before including `defines.h` or add them to the build:
+    - `M365_UART_NUM` (default 1), `M365_UART_RX_PIN`, `M365_UART_TX_PIN`.
+
+- EEPROM emulation
+  - The sketch handles `EEPROM.begin()`/`commit()` internally; no extra steps are needed.
+
+- Display
+  - I2C works on ESP32’s default SDA/SCL (GPIO21/22 on many boards). If you wired differently, set pins before `Wire.begin()` or rewire to defaults.
 
 ## Notes for common pitfalls
 

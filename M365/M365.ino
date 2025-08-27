@@ -57,12 +57,15 @@ void WDTint_() {
 
 void setup() {
   // Initialize serial communication with M365 scooter at 115200 baud
-  XIAOMI_PORT.begin(115200);
+  SERIAL_BEGIN(115200);
 
   // ============================================================================
   // LOAD SETTINGS FROM EEPROM
   // ============================================================================
   
+  // Prepare EEPROM (ESP32 needs begin/commit)
+  EEPROM_START(64);
+
   // Check if valid configuration exists (magic number 128)
   uint8_t cfgID = EEPROM.read(0);
   if (cfgID == 128) {
@@ -88,8 +91,9 @@ void setup() {
     EEPROM.put(6, cfgCruise);
     EEPROM.put(7, cfgTailight);
     EEPROM.put(8, cfgKERS);
-    EEPROM.put(9, hibernateOnBoot);
+  EEPROM.put(9, hibernateOnBoot);
   EEPROM.put(10, showPower);
+  EEPROM_COMMIT();
   }
 
   // ============================================================================
@@ -118,6 +122,7 @@ void setup() {
   if (hibernateOnBoot) {
     hibernateOnBoot = false;
     EEPROM.put(9, hibernateOnBoot);        // Clear hibernation flag in EEPROM
+    EEPROM_COMMIT();
   }
   
   // Also check for manual hibernation trigger during logo display (2 second window)
@@ -688,6 +693,7 @@ void displayFSM() {
         case 0:
           cfgCruise = !cfgCruise;
           EEPROM.put(6, cfgCruise);
+          EEPROM_COMMIT();
           break;
         case 1:
           if (cfgCruise)
@@ -698,6 +704,7 @@ void displayFSM() {
         case 2:
           cfgTailight = !cfgTailight;
           EEPROM.put(7, cfgTailight);
+          EEPROM_COMMIT();
           break;
         case 3:
           if (cfgTailight)
@@ -710,14 +717,17 @@ void displayFSM() {
             case 1:
               cfgKERS = 2;
               EEPROM.put(8, cfgKERS);
+              EEPROM_COMMIT();
               break;
             case 2:
               cfgKERS = 0;
               EEPROM.put(8, cfgKERS);
+              EEPROM_COMMIT();
               break;
             default:
               cfgKERS = 1;
               EEPROM.put(8, cfgKERS);
+              EEPROM_COMMIT();
           }
           break;
         case 5:
@@ -735,6 +745,7 @@ void displayFSM() {
         case 6:
           WheelSize = !WheelSize;
           EEPROM.put(5, WheelSize);
+          EEPROM_COMMIT();
 	  break;
         case 7:
           oldBrakeVal = brakeVal;
@@ -937,6 +948,7 @@ void displayFSM() {
           EEPROM.put(4, bigWarn);
           EEPROM.put(9, hibernateOnBoot);
           EEPROM.put(10, showPower);
+          EEPROM_COMMIT();
           Settings = false;
           break;
       } else

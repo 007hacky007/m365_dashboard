@@ -4,7 +4,15 @@
 #else
   #include <pgmspace.h>
 #endif
-#include "WatchDog.h"
+
+// Watchdog: real library on AVR, lightweight stub elsewhere
+#if defined(ARDUINO_ARCH_AVR)
+  #include "WatchDog.h"
+#else
+  namespace WatchDog {
+    inline void init(void (*)(void), uint32_t) { /* no-op on non-AVR */ }
+  }
+#endif
 
 // ============================================================================
 // DISPLAY CONFIGURATION
@@ -131,7 +139,24 @@ void(* resetFunc) (void) = 0;        // Function pointer for software reset
 // COMMUNICATION PROTOCOL DEFINITIONS
 // ============================================================================
 
-#define XIAOMI_PORT Serial           // Use hardware serial for M365 communication
+// UART selection for M365 BUS
+#if defined(ARDUINO_ARCH_ESP32)
+  #include <HardwareSerial.h>
+  #ifndef M365_UART_NUM
+    #define M365_UART_NUM 1
+  #endif
+  #ifndef M365_UART_RX_PIN
+    #define M365_UART_RX_PIN 16
+  #endif
+  #ifndef M365_UART_TX_PIN
+    #define M365_UART_TX_PIN 17
+  #endif
+  #define XIAOMI_PORT Serial1        // Use UART1 by default on ESP32
+  #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud), SERIAL_8N1, M365_UART_RX_PIN, M365_UART_TX_PIN)
+#else
+  #define XIAOMI_PORT Serial           // Use hardware serial for M365 communication
+  #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud))
+#endif
 // Safely guard AVR-specific UART RX enable/disable for portability with newer cores
 #if defined(UCSR0B) && defined(RXEN0)
   #define RX_DISABLE UCSR0B &= ~_BV(RXEN0);
@@ -140,6 +165,15 @@ void(* resetFunc) (void) = 0;        // Function pointer for software reset
   // Non-AVR or cores without UCSR0B: no-op to keep build working
   #define RX_DISABLE
   #define RX_ENABLE
+#endif
+
+// EEPROM helpers: required on ESP32 to start/commit emulated EEPROM
+#if defined(ARDUINO_ARCH_ESP32)
+  #define EEPROM_START(sz) EEPROM.begin((sz))
+  #define EEPROM_COMMIT()  EEPROM.commit()
+#else
+  #define EEPROM_START(sz) ((void)0)
+  #define EEPROM_COMMIT()  ((void)0)
 #endif
 
 // Query structure for sending commands to M365
