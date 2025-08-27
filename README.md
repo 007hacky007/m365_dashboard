@@ -178,3 +178,15 @@ esptool.py --chip esp32 --port /dev/tty.usbserial-XXXX --baud 921600 write_flash
 Tips:
 - Port may be /dev/cu.usbserial-XXXX or /dev/cu.SLAB_USBtoUART depending on your USB-UART chip.
 - For ESP32, hold BOOT while tapping EN (RST) to enter download mode on many dev boards.
+
+## Testing without hardware (Wokwi simulator)
+
+This repo includes two ready-to-run Wokwi setups that display the UI with animated, synthetic data. The sketch has a compile-time flag (SIM_MODE) that feeds fake frames so it doesn’t wait for the scooter bus.
+
+- ESP32 DevKit: open the `wokwi-esp32` folder in Wokwi. The SSD1306 is wired to SDA=21, SCL=22 at I2C address 0x3C. The `wokwi.toml` passes `-DSIM_MODE`.
+- Arduino Nano: open the `wokwi-nano` folder. The OLED uses A4 (SDA) and A5 (SCL), also with `-DSIM_MODE` enabled.
+
+Notes:
+- In SIM mode the sketch skips the hibernation wait and “no data” error, and animates speed/throttle/brake, battery voltage/percent, temps, and timers.
+- Production builds are unaffected because SIM_MODE is commented out by default in `M365/defines.h`.
+- If you prefer, you can define SIM_MODE via the build flags instead of editing the file.

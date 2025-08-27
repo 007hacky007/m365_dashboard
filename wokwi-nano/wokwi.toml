@@ -1,0 +1,11 @@
+## Wokwi project config for Arduino Nano + SSD1306 I2C OLED
+
+[wokwi]
+version = 1
+firmware = "../build/M365.ino.hex"   
+elf      = "../build/M365.ino.elf"   # optional but speeds things up
+
+[arduino]
+fqbn = "arduino:avr:nano"
+sketch = "../M365/M365.ino"
+defines = ["SIM_MODE"]
