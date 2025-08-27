@@ -1810,20 +1810,34 @@ static void simTick() {
   int16_t speed_mmpkh = (int16_t)(up * 250); // 0..25000 (1/1000 km/h units)
   bool braking = ((now / 5000) % 2) == 1; // alternate every 5s
 
-  // Throttle/brake
-  if (braking) {
-    S20C00HZ65.throttle = 30;  // min
-    S20C00HZ65.brake = 180;    // strong braking
-  } else {
-    S20C00HZ65.brake = 40;     // released
-    S20C00HZ65.throttle = (uint8_t)(50 + (up * 2)); // ~50..250
-  }
+  // Insert dwell periods where the scooter stands still to showcase default screen
+  // Two dwells per 20s cycle: [0..3)s and [10..13)s
+  uint32_t cycle = now % 20000UL;
+  bool dwell = (cycle < 3000UL) || (cycle >= 10000UL && cycle < 13000UL);
 
-  // Current: draw under accel, regen under braking
-  if (braking) {
-    S25C31.current = (int16_t)(-700 - up * 8);   // -7.00 .. -15.00 A
+  if (dwell) {
+    // Hold still: zero speed, neutral inputs, zero current
+    speed_mmpkh = 0;
+    S20C00HZ65.throttle = 30;  // min
+    S20C00HZ65.brake = 40;     // released
+    S25C31.current = 0;        // no draw/regen
+    braking = false;
   } else {
-    S25C31.current = (int16_t)(up * 12);         // 0 .. 12.00 A
+    // Throttle/brake animation
+    if (braking) {
+      S20C00HZ65.throttle = 30;  // min
+      S20C00HZ65.brake = 180;    // strong braking
+    } else {
+      S20C00HZ65.brake = 40;     // released
+      S20C00HZ65.throttle = (uint8_t)(50 + (up * 2)); // ~50..250
+    }
+
+    // Current: draw under accel, regen under braking
+    if (braking) {
+      S25C31.current = (int16_t)(-700 - up * 8);   // -7.00 .. -15.00 A
+    } else {
+      S25C31.current = (int16_t)(up * 12);         // 0 .. 12.00 A
+    }
   }
 
   // Speed and temps
@@ -1834,11 +1848,13 @@ static void simTick() {
   S23C3A.powerOnTime++;
   S23C3A.ridingTime++;
   // Trip mileage: increment roughly with speed (km/100 units)
-  S23CB0.mileageCurrent += (uint16_t)(up / 10); // coarse approx
+  if (!dwell) {
+    S23CB0.mileageCurrent += (uint16_t)(up / 10); // coarse approx
+  }
 
   // Battery: tiny sag on accel, small recovery on brake
   int16_t v = S25C31.voltage;
-  int16_t sag = braking ? -5 : (up > 0 ? -2 : 0);
+  int16_t sag = dwell ? 0 : (braking ? -5 : (up > 0 ? -2 : 0));
   v += sag;
   if ((now % 4000) < 100) v--; // slow discharge trend
   if (v < 3600) v = 3600;
