@@ -43,12 +43,29 @@ jobs:
           - name: ProMini-16MHz
             fqbn: "arduino:avr:pro:cpu=16MHzatmega328"
             ext: hex
+            build_flags: ""
           - name: ProMini-8MHz
             fqbn: "arduino:avr:pro:cpu=8MHzatmega328"
             ext: hex
+            build_flags: ""
           - name: ESP32-Dev
             fqbn: "esp32:esp32:esp32"
             ext: bin
+            build_flags: ""
+
+          # SIM_MODE variants (compile-time synthetic data for simulator/testing)
+          - name: ProMini-16MHz-SIM
+            fqbn: "arduino:avr:pro:cpu=16MHzatmega328"
+            ext: hex
+            build_flags: '--build-property compiler.cpp.extra_flags="-DSIM_MODE" --build-property compiler.c.extra_flags="-DSIM_MODE"'
+          - name: ProMini-8MHz-SIM
+            fqbn: "arduino:avr:pro:cpu=8MHzatmega328"
+            ext: hex
+            build_flags: '--build-property compiler.cpp.extra_flags="-DSIM_MODE" --build-property compiler.c.extra_flags="-DSIM_MODE"'
+          - name: ESP32-Dev-SIM
+            fqbn: "esp32:esp32:esp32"
+            ext: bin
+            build_flags: '--build-property compiler.cpp.extra_flags="-DSIM_MODE" --build-property compiler.c.extra_flags="-DSIM_MODE"'
 
     steps:
       - name: Checkout
@@ -88,6 +105,7 @@ jobs:
             --fqbn "${{ matrix.fqbn }}" \
             --export-binaries \
             --output-dir build/${{ matrix.name }} \
+            ${{ matrix.build_flags }} \
             ./M365
 
       - name: Upload artifacts (${{ matrix.name }})

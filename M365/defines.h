@@ -72,6 +72,10 @@ MessagesClass Message;         // Global message handler instance
 // CONFIGURATION VARIABLES AND DEFAULTS
 // ============================================================================
 
+// Enable to run without a real scooter/bus. Feeds synthetic frames so the UI works in simulators.
+// You can define this at compile time (e.g., in Wokwi or via build flags).
+// #define SIM_MODE
+
 const uint16_t LONG_PRESS = 2000;    // Duration for long press detection (ms)
 
 // Display and warning settings (stored in EEPROM)

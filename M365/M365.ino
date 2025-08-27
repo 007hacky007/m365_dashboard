@@ -14,6 +14,12 @@
 
 #include "defines.h"
 
+// Optional simulator for Wokwi/desktop runs: feeds synthetic scooter data
+#ifdef SIM_MODE
+static void simInit();
+static void simTick();
+#endif
+
 // ============================================================================
 // DISPLAY MANAGEMENT FUNCTIONS
 // ============================================================================
@@ -116,6 +122,7 @@ void setup() {
   // HIBERNATION MODE DETECTION (Throttle + Brake during logo display OR EEPROM setting)
   // ============================================================================
   
+#ifndef SIM_MODE
   bool hibernationDetected = hibernateOnBoot;  // Check EEPROM hibernation setting first
   
   // If hibernation was set via menu, clear the EEPROM flag immediately
@@ -164,12 +171,17 @@ void setup() {
       delay(100);                          // Small delay to reduce CPU usage
     }
   }
+#else
+  // In simulator mode, initialize synthetic data and skip hibernation logic
+  simInit();
+#endif
 
   // ============================================================================
   // WAIT FOR SCOOTER DATA OR DETECT NO CONNECTION
   // ============================================================================
   
-  // Wait up to 2 seconds for valid data from scooter
+  // Wait for scooter data (skip when simulating)
+#ifndef SIM_MODE
   uint32_t wait = millis() + 2000;
   while ((wait > millis()) || ((wait - 1000 > millis()) && (S25C31.current != 0) && (S25C31.voltage != 0) && (S25C31.remainPercent != 0))) {
     dataFSM();                             // Process incoming data
@@ -189,6 +201,10 @@ void setup() {
     display.println((const __FlashStringHelper *) noBUS4);  // "display!"
     display.set1X();
   } else displayClear(1);
+#else
+  // Ensure first screen clears in simulator
+  displayClear(1);
+#endif
 
   // ============================================================================
   // START WATCHDOG TIMER
@@ -207,6 +223,10 @@ void setup() {
  * Cycle time without data exchange is approximately 8 microseconds
  */
 void loop() {
+  // Drive synthetic data when simulating
+#ifdef SIM_MODE
+  simTick();
+#endif
   // Process incoming data from M365 scooter
   dataFSM();
 
@@ -1711,3 +1731,108 @@ uint16_t calcCs(uint8_t* data, uint8_t len) {
   for (uint8_t i = len; i > 0; i--) cs -= *data++; // Subtract each byte
   return cs;
 }
+
+// ============================================================================
+// SIMULATOR: SYNTHETIC DATA FEEDER (Wokwi/dev runs)
+// ============================================================================
+#ifdef SIM_MODE
+static void simInit() {
+  // Reasonable startup values
+  memset(&S21C00HZ64, 0, sizeof(S21C00HZ64));
+  S21C00HZ64.state = 1;      // drive
+  S21C00HZ64.ledBatt = 6;
+
+  memset(&S20C00HZ65, 0, sizeof(S20C00HZ65));
+
+  memset(&S25C31, 0, sizeof(S25C31));
+  S25C31.voltage = 4150;     // 41.50 V
+  S25C31.current = 0;        // 0.00 A
+  S25C31.remainPercent = 78; // 78%
+  S25C31.remainCapacity = 6000; // mAh
+  S25C31.temp1 = 45;         // 25 C
+  S25C31.temp2 = 46;         // 26 C
+
+  memset(&S23CB0, 0, sizeof(S23CB0));
+  S23CB0.speed = 0;          // 0.000 km/h
+  S23CB0.mileageTotal = 123450; // 123.450 km
+  S23CB0.mileageCurrent = 0; // 0.00 km
+  S23CB0.mainframeTemp = 240; // 24.0 C
+
+  memset(&S23C3A, 0, sizeof(S23C3A));
+  S23C3A.powerOnTime = 0;
+  S23C3A.ridingTime = 0;
+
+  // Seed some per-cell voltages ~4.15V
+  memset(&S25C40, 0, sizeof(S25C40));
+  int16_t* c = (int16_t*)&S25C40;
+  for (uint8_t i = 0; i < 10; i++) c[i] = 4150 + (i % 3);
+
+  _NewDataFlag = 1;
+}
+
+static void simTick() {
+  static uint32_t last = 0;
+  uint32_t now = millis();
+  if ((int32_t)(now - last) < 100) return; // 10Hz updates
+  last = now;
+
+  // Triangle wave 0..25.0 km/h over ~10s
+  uint16_t phase = (now / 50) % 200; // 0..199
+  uint16_t up = (phase <= 100) ? phase : (200 - phase); // 0..100
+  int16_t speed_mmpkh = (int16_t)(up * 250); // 0..25000 (1/1000 km/h units)
+  bool braking = ((now / 5000) % 2) == 1; // alternate every 5s
+
+  // Throttle/brake
+  if (braking) {
+    S20C00HZ65.throttle = 30;  // min
+    S20C00HZ65.brake = 180;    // strong braking
+  } else {
+    S20C00HZ65.brake = 40;     // released
+    S20C00HZ65.throttle = (uint8_t)(50 + (up * 2)); // ~50..250
+  }
+
+  // Current: draw under accel, regen under braking
+  if (braking) {
+    S25C31.current = (int16_t)(-700 - up * 8);   // -7.00 .. -15.00 A
+  } else {
+    S25C31.current = (int16_t)(up * 12);         // 0 .. 12.00 A
+  }
+
+  // Speed and temps
+  S23CB0.speed = speed_mmpkh;
+  if (S23CB0.mainframeTemp < 320) S23CB0.mainframeTemp++; // warm slowly
+
+  // Time and mileage
+  S23C3A.powerOnTime++;
+  S23C3A.ridingTime++;
+  // Trip mileage: increment roughly with speed (km/100 units)
+  S23CB0.mileageCurrent += (uint16_t)(up / 10); // coarse approx
+
+  // Battery: tiny sag on accel, small recovery on brake
+  int16_t v = S25C31.voltage;
+  int16_t sag = braking ? -5 : (up > 0 ? -2 : 0);
+  v += sag;
+  if ((now % 4000) < 100) v--; // slow discharge trend
+  if (v < 3600) v = 3600;
+  if (v > 4200) v = 4200;
+  S25C31.voltage = v;
+
+  // Keep per-cell voltages around pack/10
+  int16_t* c = (int16_t*)&S25C40;
+  int16_t target = v / 10;
+  for (uint8_t i = 0; i < 10; i++) {
+    int16_t jitter = (i * 3) % 7; // small variation
+    c[i] = target + jitter;
+  }
+
+  // SOC estimation from voltage for demo purposes
+  uint8_t soc = (uint8_t)constrain((v - 3600) / 6, 0, 100);
+  S25C31.remainPercent = soc;
+  S25C31.remainCapacity = (uint16_t)(6500UL * soc / 100);
+
+  // Mark new data so UI refreshes
+  _NewDataFlag = 1;
+  // Ensure query state machine never blocks display in sim
+  _Query.prepared = 0;
+}
+#endif
