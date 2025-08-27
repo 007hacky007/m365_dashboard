@@ -1165,29 +1165,57 @@ void displayFSM() {
         case 1:
           display.setFont(bigNumb);
           if (showPower) {
-            // Show power (W)
-            tmp_0 = m365_info.pwh / 10;
-            tmp_1 = m365_info.pwh % 10;
-            display.setCursor(2, 0);
-            if (tmp_0 > 0)
-              display.print(tmp_0);
-            else
-              display.print((char)0x3B);
-            display.setCursor(32, 0);
-            display.print(tmp_1);
-            tmp_0 = m365_info.pwl / 10;
-            tmp_1 = m365_info.pwl % 10;
-            display.setCursor(75, 0);
-            display.print(tmp_0);
-            display.setCursor(108, 0);
-            display.setFont(stdNumb);
-            display.print(tmp_1);
-            display.setFont(defaultFont);
-            // Blink unit when regen (negative current)
-            if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
-              display.set2X();
-              display.setCursor(108, 4);
-              display.print((const __FlashStringHelper *) l_w);
+            // Show power without decimals. If > 999 W, switch to kW.
+            {
+              uint16_t W = m365_info.pwh; // integer watts
+              if (W > 999) {
+                // kW mode (rounded to nearest whole kW, no decimals)
+                uint16_t kW = (uint16_t)((W + 500) / 1000);
+                // Two big digits: tens and ones of kW
+                tmp_0 = kW / 10;
+                tmp_1 = kW % 10;
+                display.setCursor(2, 0);
+                if (tmp_0 > 0)
+                  display.print(tmp_0);
+                else
+                  display.print((char)0x3B);
+                display.setCursor(32, 0);
+                display.print(tmp_1);
+                // Clear smaller digit slots
+                display.setFont(stdNumb);
+                display.setCursor(75, 0); display.print(' ');
+                display.setCursor(108, 0); display.print(' ');
+                display.setFont(defaultFont);
+                // Blink unit when regen (negative current)
+                if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
+                  display.set2X();
+                  display.setCursor(96, 4);
+                  display.print("kW");
+                }
+              } else {
+                // W mode: show 4 digits (thousands..ones), no decimals
+                uint8_t d1 = (W / 1000U) % 10U; // thousands
+                uint8_t d2 = (W / 100U) % 10U;  // hundreds
+                uint8_t d3 = (W / 10U) % 10U;   // tens
+                uint8_t d4 = W % 10U;           // ones
+                // First two as big digits (always show leading zeros)
+                display.setCursor(2, 0);
+                display.print(d1);
+                display.setCursor(32, 0);
+                display.print(d2);
+                // Last two as small digits to fit layout
+                display.setFont(stdNumb);
+                display.setCursor(75, 0);
+                display.print(d3);
+                display.setCursor(108, 0);
+                display.print(d4);
+                display.setFont(defaultFont);
+                if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
+                  display.set2X();
+                  display.setCursor(108, 4);
+                  display.print((const __FlashStringHelper *) l_w);
+                }
+              }
             }
           } else {
             // Show current (A)
@@ -1213,6 +1241,13 @@ void displayFSM() {
               display.setCursor(108, 4);
               display.print((const __FlashStringHelper *) l_a);
             }
+          }
+          // Regen indicator: show 'R' when current is negative
+          if (S25C31.current < 0) {
+            display.setFont(defaultFont);
+            display.set1X();
+            display.setCursor(54, 5);
+            display.print('R');
           }
           display.set1X();
           display.setCursor(64, 5);
@@ -1836,7 +1871,7 @@ static void simTick() {
     if (braking) {
       S25C31.current = (int16_t)(-700 - up * 8);   // -7.00 .. -15.00 A
     } else {
-      S25C31.current = (int16_t)(up * 12);         // 0 .. 12.00 A
+      S25C31.current = (int16_t)(up * 40);         // 0 .. 40.00 A
     }
   }
 
