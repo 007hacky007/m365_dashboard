@@ -71,8 +71,8 @@ uint8_t menuPos = 0;                  // Current position in main settings menu
 uint8_t sMenuPos = 0;                 // Current position in M365 settings menu
 
 // M365 scooter configuration (stored in EEPROM)
-bool cfgCruise = true;                // Cruise control enabled
-bool cfgTailight = false;             // Rear light configuration
+bool cfgCruise = false;                // Cruise control enabled
+bool cfgTailight = true;             // Rear light configuration
 uint8_t cfgKERS = 0;                  // Regenerative braking: 0=weak, 1=medium, 2=strong
 
 // Input handling variables
@@ -98,7 +98,7 @@ SSD1306AsciiWire display;            // I2C display object
 // SCOOTER CONFIGURATION
 // ============================================================================
 
-bool WheelSize = false;              // false = 8.5" wheels, true = 10" wheels
+bool WheelSize = true;              // false = 8.5" wheels, true = 10" wheels
 
 // ============================================================================
 // WATCHDOG AND RESET FUNCTIONALITY
