@@ -76,6 +76,7 @@ void setup() {
     cfgTailight = EEPROM.read(7);          // Taillight setting
     cfgKERS = EEPROM.read(8);              // Regenerative braking setting
     hibernateOnBoot = EEPROM.read(9);      // One-time hibernation trigger
+  showPower = EEPROM.read(10);           // Display power instead of current
   } else {
     // First time setup - save default values to EEPROM
     EEPROM.put(0, 128);                    // Magic number to indicate valid config
@@ -88,6 +89,7 @@ void setup() {
     EEPROM.put(7, cfgTailight);
     EEPROM.put(8, cfgKERS);
     EEPROM.put(9, hibernateOnBoot);
+  EEPROM.put(10, showPower);
   }
 
   // ============================================================================
@@ -438,15 +440,31 @@ void fsBattInfo() {
   display.print((const __FlashStringHelper *) l_v);
   display.print(' ');
 
-  // Display current (XX.XX A)
-  tmp_0 = abs(S25C31.current) / 100;       
-  tmp_1 = abs(S25C31.current) % 100;
-  if (tmp_0 < 10) display.print(' ');
-  display.print(tmp_0);
-  display.print('.');
-  if (tmp_1 < 10) display.print('0');
-  display.print(tmp_1);
-  display.print((const __FlashStringHelper *) l_a);
+  // Display current or power depending on setting
+  if (!showPower) {
+    // Current (XX.XX A)
+    tmp_0 = abs(S25C31.current) / 100;       
+    tmp_1 = abs(S25C31.current) % 100;
+    if (tmp_0 < 10) display.print(' ');
+    display.print(tmp_0);
+    display.print('.');
+    if (tmp_1 < 10) display.print('0');
+    display.print(tmp_1);
+    display.print((const __FlashStringHelper *) l_a);
+  } else {
+    // Power (XXX.XX W) computed from voltage and current
+    uint32_t ai = (uint32_t)abs(S25C31.current);
+    uint32_t vi = (uint32_t)abs(S25C31.voltage);
+    uint32_t m = (ai * vi + 50) / 100; // centi-watts
+    tmp_0 = (int16_t)(m / 100);
+    tmp_1 = (int16_t)(m % 100);
+    if (tmp_0 < 10) display.print(' ');
+    display.print(tmp_0);
+    display.print('.');
+    if (tmp_1 < 10) display.print('0');
+    display.print(tmp_1);
+    display.print((const __FlashStringHelper *) l_w);
+  }
   display.print(' ');
   
   // Display remaining capacity (XXXX mAh)
@@ -535,6 +553,8 @@ void displayFSM() {
   struct {
     uint16_t curh;                       // Current high part (before decimal)
     uint16_t curl;                       // Current low part (after decimal)
+  uint16_t pwh;                        // Power high part (W integer)
+  uint16_t pwl;                        // Power low part (W decimal, 0-99)
     uint16_t vh;                         // Voltage high part
     uint16_t vl;                         // Voltage low part
     uint32_t sph;                        // Speed high part
@@ -598,6 +618,17 @@ void displayFSM() {
   m365_info.vh = abs(S25C31.voltage) / 100;         // Voltage integer part
   m365_info.vl = abs(S25C31.voltage) % 100;         // Voltage decimal part
 
+  // Compute power in Watts from raw units (current/100 A * voltage/100 V)
+  // Multiply first to keep precision, then divide by 10000
+  {
+    uint32_t ai = (uint32_t)abs(S25C31.current);
+    uint32_t vi = (uint32_t)abs(S25C31.voltage);
+    uint32_t m = (ai * vi + 50) / 100; // scale to /100 to get centi-watts rounded
+    // Now m is in centi-watts (W * 100)
+    m365_info.pwh = (uint16_t)(m / 100);
+    m365_info.pwl = (uint16_t)(m % 100);
+  }
+
   // ============================================================================
   // AUTO-EXIT SETTINGS WHEN MOVING
   // ============================================================================
@@ -656,7 +687,7 @@ void displayFSM() {
       switch (sMenuPos) {
         case 0:
           cfgCruise = !cfgCruise;
-	  EEPROM.put(6, cfgCruise);
+          EEPROM.put(6, cfgCruise);
           break;
         case 1:
           if (cfgCruise)
@@ -666,7 +697,7 @@ void displayFSM() {
           break;
         case 2:
           cfgTailight = !cfgTailight;
-	  EEPROM.put(7, cfgTailight);
+          EEPROM.put(7, cfgTailight);
           break;
         case 3:
           if (cfgTailight)
@@ -678,15 +709,15 @@ void displayFSM() {
           switch (cfgKERS) {
             case 1:
               cfgKERS = 2;
-	      EEPROM.put(8, cfgKERS);
+              EEPROM.put(8, cfgKERS);
               break;
             case 2:
               cfgKERS = 0;
-	      EEPROM.put(8, cfgKERS);
+              EEPROM.put(8, cfgKERS);
               break;
-            default: 
+            default:
               cfgKERS = 1;
-	      EEPROM.put(8, cfgKERS);
+              EEPROM.put(8, cfgKERS);
           }
           break;
         case 5:
@@ -894,19 +925,23 @@ void displayFSM() {
           M365Settings = true;
           break;
         case 6:
-          hibernateOnBoot = !hibernateOnBoot;
+          showPower = !showPower;          // Toggle unit A/W
           break;
         case 7:
+          hibernateOnBoot = !hibernateOnBoot;
+          break;
+        case 8:
           EEPROM.put(1, autoBig);
           EEPROM.put(2, warnBatteryPercent);
           EEPROM.put(3, bigMode);
           EEPROM.put(4, bigWarn);
           EEPROM.put(9, hibernateOnBoot);
+          EEPROM.put(10, showPower);
           Settings = false;
           break;
       } else
       if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {               // brake max + throttle min = change menu position
-        if (menuPos < 7)
+        if (menuPos < 8)
           menuPos++;
           else
           menuPos = 0;
@@ -1006,22 +1041,28 @@ void displayFSM() {
         else
         display.print(" ");
 
+      display.print((const __FlashStringHelper *) confScr9);
+      if (showPower)
+        display.print((const __FlashStringHelper *) l_w);
+        else
+        display.print((const __FlashStringHelper *) l_a);
+
+      display.setCursor(0, 7);
+
+      if (menuPos == 7)
+        display.print((char)0x7E);
+        else
+        display.print(" ");
+
       display.print((const __FlashStringHelper *) confScr7);
       if (hibernateOnBoot)
         display.print((const __FlashStringHelper *) l_Yes);
         else
         display.print((const __FlashStringHelper *) l_No);
 
-      display.setCursor(0, 7);
-
-      for (uint8_t i = 0; i < 25; i++) {
-        display.setCursor(i * 5, 7);
-        display.print('-');
-      }
-
       display.setCursor(0, 8);
 
-      if (menuPos == 7)
+      if (menuPos == 8)
         display.print((char)0x7E);
         else
         display.print(" ");
@@ -1196,13 +1237,23 @@ void displayFSM() {
 
         display.setCursor(68, 4);
 
-        if (m365_info.curh < 10) display.print(' ');
-        display.print(m365_info.curh);
-        display.print('.');
-        if (m365_info.curl < 10) display.print('0');
-        display.print(m365_info.curl);
-        display.setFont(defaultFont);
-        display.print((const __FlashStringHelper *) l_a);
+        if (!showPower) {
+          if (m365_info.curh < 10) display.print(' ');
+          display.print(m365_info.curh);
+          display.print('.');
+          if (m365_info.curl < 10) display.print('0');
+          display.print(m365_info.curl);
+          display.setFont(defaultFont);
+          display.print((const __FlashStringHelper *) l_a);
+        } else {
+          if (m365_info.pwh < 10) display.print(' ');
+          display.print(m365_info.pwh);
+          display.print('.');
+          if (m365_info.pwl < 10) display.print('0');
+          display.print(m365_info.pwl);
+          display.setFont(defaultFont);
+          display.print((const __FlashStringHelper *) l_w);
+        }
       }
 
       showBatt(S25C31.remainPercent, S25C31.current < 0);

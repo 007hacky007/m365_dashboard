@@ -66,6 +66,7 @@ bool autoBig = true;                  // Auto-enable big speedometer when moving
 uint8_t bigMode = 0;                  // Big display mode: 0=speed, 1=current
 bool bigWarn = true;                  // Show full-screen battery warning
 bool hibernateOnBoot = false;         // One-time hibernation trigger on next boot
+bool showPower = true;                // Show power (W) instead of current (A)
 
 // Menu state variables
 bool Settings = false;                // True when in settings menu

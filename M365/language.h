@@ -25,6 +25,7 @@
   const char confScr5[] PROGMEM = {"Battery info"};
   const char confScr6[] PROGMEM = {"Configure M365"};
   const char confScr7[] PROGMEM = {"Hibernate on boot: "};
+  const char confScr9[] PROGMEM = {"Show unit (A/W): "};
   const char confScr8[] PROGMEM = {"Save and exit"};
  
   const char infoScr1[] PROGMEM = {"Total distance"};
@@ -58,6 +59,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
 #endif
@@ -79,6 +81,7 @@
   const char confScr5[] PROGMEM = {"Info Batteria"};
   const char confScr6[] PROGMEM = {"Configura M365"};
   const char confScr7[] PROGMEM = {"Hibernation avvio: "};
+  const char confScr9[] PROGMEM = {"Mostra unita (A/W): "};
   const char confScr8[] PROGMEM = {"Salva e esci"};
  
   const char infoScr1[] PROGMEM = {"Distance totale"};
@@ -112,6 +115,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
 #endif
@@ -133,6 +137,7 @@
   const char confScr5[] PROGMEM = {"Informations batterie"};
   const char confScr6[] PROGMEM = {"Configure M365"};
   const char confScr7[] PROGMEM = {"Hibernation demarr: "};
+  const char confScr9[] PROGMEM = {"Unité (A/W): "};
   const char confScr8[] PROGMEM = {"Enregistrer et quitter"};
 
   const char infoScr1[] PROGMEM = {"Distance Totale"};
@@ -166,6 +171,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
 #endif
@@ -187,6 +193,7 @@
   const char confScr5[] PROGMEM = {"Informacion "};
   const char confScr6[] PROGMEM = {"Configurar M365"};
   const char confScr7[] PROGMEM = {"Hibernar arranque: "};
+  const char confScr9[] PROGMEM = {"Unidad (A/W): "};
   const char confScr8[] PROGMEM = {"Grabar y salir"};
 
   const char infoScr1[] PROGMEM = {"Distancia total"};
@@ -220,6 +227,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
   #endif
@@ -241,6 +249,7 @@
   const char confScr5[] PROGMEM = {"Info o baterii >"};
   const char confScr6[] PROGMEM = {"Nastaveni M365 >"};
   const char confScr7[] PROGMEM = {"Hibernace pri spust:"};
+  const char confScr9[] PROGMEM = {"Jednotka vykonu (A/W):"};
   const char confScr8[] PROGMEM = {"Ulozit a odejit"};
 
   const char infoScr1[] PROGMEM = {"Celkova vzdalenost"};
@@ -274,6 +283,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
   
@@ -296,6 +306,7 @@
   const char confScr5[] PROGMEM = {"Batterie Info"};
   const char confScr6[] PROGMEM = {"M365 Konfigurieren"};
   const char confScr7[] PROGMEM = {"Hibernation Start: "};
+  const char confScr9[] PROGMEM = {"Anzeigeeinheit (A/W): "};
   const char confScr8[] PROGMEM = {"Speichern und beenden"};
  
   const char infoScr1[] PROGMEM = {"Total Entfernung"};
@@ -329,6 +340,7 @@
   const char l_mah[] PROGMEM = {"mAh"};
   const char l_v[] PROGMEM = {"V"};
   const char l_a[] PROGMEM = {"A"};
+  const char l_w[] PROGMEM = {"W"};
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
 #endif
