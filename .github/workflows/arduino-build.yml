@@ -60,6 +60,11 @@ jobs:
       - name: Init Arduino CLI config
         run: arduino-cli config init
 
+      - name: Enable ZIP library install
+        run: |
+          arduino-cli config set library.enable_unsafe_install true
+          arduino-cli config dump
+
       - name: Update core indexes (incl. ESP32)
         run: |
           arduino-cli core update-index \
