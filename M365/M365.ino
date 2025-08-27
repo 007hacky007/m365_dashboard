@@ -1164,27 +1164,55 @@ void displayFSM() {
       switch (bigMode) {
         case 1:
           display.setFont(bigNumb);
-          tmp_0 = m365_info.curh / 10;
-          tmp_1 = m365_info.curh % 10;
-          display.setCursor(2, 0);
-          if (tmp_0 > 0)
-            display.print(tmp_0);
+          if (showPower) {
+            // Show power (W)
+            tmp_0 = m365_info.pwh / 10;
+            tmp_1 = m365_info.pwh % 10;
+            display.setCursor(2, 0);
+            if (tmp_0 > 0)
+              display.print(tmp_0);
             else
-            display.print((char)0x3B);
-          display.setCursor(32, 0);
-          display.print(tmp_1);
-          tmp_0 = m365_info.curl / 10;
-          tmp_1 = m365_info.curl % 10;
-          display.setCursor(75, 0);
-          display.print(tmp_0);
-          display.setCursor(108, 0);
-          display.setFont(stdNumb);
-          display.print(tmp_1);
-          display.setFont(defaultFont);
-          if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
-            display.set2X();
-            display.setCursor(108, 4);
-            display.print((const __FlashStringHelper *) l_a);
+              display.print((char)0x3B);
+            display.setCursor(32, 0);
+            display.print(tmp_1);
+            tmp_0 = m365_info.pwl / 10;
+            tmp_1 = m365_info.pwl % 10;
+            display.setCursor(75, 0);
+            display.print(tmp_0);
+            display.setCursor(108, 0);
+            display.setFont(stdNumb);
+            display.print(tmp_1);
+            display.setFont(defaultFont);
+            // Blink unit when regen (negative current)
+            if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
+              display.set2X();
+              display.setCursor(108, 4);
+              display.print((const __FlashStringHelper *) l_w);
+            }
+          } else {
+            // Show current (A)
+            tmp_0 = m365_info.curh / 10;
+            tmp_1 = m365_info.curh % 10;
+            display.setCursor(2, 0);
+            if (tmp_0 > 0)
+              display.print(tmp_0);
+            else
+              display.print((char)0x3B);
+            display.setCursor(32, 0);
+            display.print(tmp_1);
+            tmp_0 = m365_info.curl / 10;
+            tmp_1 = m365_info.curl % 10;
+            display.setCursor(75, 0);
+            display.print(tmp_0);
+            display.setCursor(108, 0);
+            display.setFont(stdNumb);
+            display.print(tmp_1);
+            display.setFont(defaultFont);
+            if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
+              display.set2X();
+              display.setCursor(108, 4);
+              display.print((const __FlashStringHelper *) l_a);
+            }
           }
           display.set1X();
           display.setCursor(64, 5);
@@ -1754,7 +1782,7 @@ static void simInit() {
 
   memset(&S23CB0, 0, sizeof(S23CB0));
   S23CB0.speed = 0;          // 0.000 km/h
-  S23CB0.mileageTotal = 123450; // 123.450 km
+  S23CB0.mileageTotal = 1234; // 123.450 km
   S23CB0.mileageCurrent = 0; // 0.00 km
   S23CB0.mainframeTemp = 240; // 24.0 C
 
