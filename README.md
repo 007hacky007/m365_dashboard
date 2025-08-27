@@ -127,3 +127,54 @@ This repo includes a GitHub Actions workflow that compiles:
 - ESP32 Dev Module .bin
 
 Artifacts are attached to each workflow run (see the Actions tab > latest run > Artifacts).
+
+## Using CI build artifacts (precompiled binaries)
+
+Pick files from the artifact that matches your target:
+
+- ATmega328P (Arduino Pro Mini/Nano)
+  - M365.ino.hex — sketch only (upload via serial bootloader).
+  - M365.ino.with_bootloader.hex — bootloader + sketch (program via ISP).
+  - M365.ino.elf — symbols/debug only; not for flashing.
+
+- ESP32
+  - M365.ino.bin — app image (flash at 0x10000).
+  - M365.ino.partitions.bin — partition table (flash at 0x8000).
+  - M365.ino.bootloader.bin — bootloader (flash at 0x1000).
+  - M365.ino.merged.bin — combined full image (flash at 0x0, if provided).
+  - M365.ino.elf — symbols/debug only; not for flashing.
+
+### Flashing ATmega328P from macOS
+
+Serial bootloader (FTDI/CH340; bootloader already present):
+1) Find the port:
+   ls /dev/tty.usb* /dev/cu.usb* 2>/dev/null
+2) Upload the sketch:
+   - Old bootloader (common on Pro Mini): 57600 baud
+     avrdude -p m328p -c arduino -P /dev/tty.usbserial-XXXX -b 57600 -D -U flash:w:M365.ino.hex:i
+   - Optiboot (some boards): 115200 baud
+     avrdude -p m328p -c arduino -P /dev/tty.usbserial-XXXX -b 115200 -D -U flash:w:M365.ino.hex:i
+
+ISP programmer (USBasp/USBTinyISP; writes bootloader + sketch):
+avrdude -p m328p -c usbasp -U flash:w:M365.ino.with_bootloader.hex:i
+
+Notes:
+- If fuses/clock are wrong, use Arduino IDE: Tools > Board “Arduino Pro Mini” (correct 3.3V/8 MHz or 5V/16 MHz), then Tools > Burn Bootloader to set fuses. After that, upload M365.ino.hex via serial.
+
+### Flashing ESP32 from macOS
+
+App-only update (keeps current bootloader/partitions):
+esptool.py --chip esp32 --port /dev/tty.usbserial-XXXX --baud 921600 write_flash 0x10000 M365.ino.bin
+
+Full flash:
+esptool.py --chip esp32 --port /dev/tty.usbserial-XXXX --baud 921600 write_flash \
+  0x1000  M365.ino.bootloader.bin \
+  0x8000  M365.ino.partitions.bin \
+  0x10000 M365.ino.bin
+
+Single-image (if merged.bin is present):
+esptool.py --chip esp32 --port /dev/tty.usbserial-XXXX --baud 921600 write_flash 0x0 M365.ino.merged.bin
+
+Tips:
+- Port may be /dev/cu.usbserial-XXXX or /dev/cu.SLAB_USBtoUART depending on your USB-UART chip.
+- For ESP32, hold BOOT while tapping EN (RST) to enter download mode on many dev boards.
