@@ -1,5 +1,5 @@
 #include "messages.h"
-#include <cstring>
+#include <string.h>
 
 MessagesClass::MessagesClass(){
   memset((void*)&messages, DROP, sizeof(messages));
