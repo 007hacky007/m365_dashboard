@@ -75,6 +75,7 @@ void setup() {
     cfgCruise = EEPROM.read(6);            // Cruise control setting
     cfgTailight = EEPROM.read(7);          // Taillight setting
     cfgKERS = EEPROM.read(8);              // Regenerative braking setting
+    hibernateOnBoot = EEPROM.read(9);      // One-time hibernation trigger
   } else {
     // First time setup - save default values to EEPROM
     EEPROM.put(0, 128);                    // Magic number to indicate valid config
@@ -86,6 +87,7 @@ void setup() {
     EEPROM.put(6, cfgCruise);
     EEPROM.put(7, cfgTailight);
     EEPROM.put(8, cfgKERS);
+    EEPROM.put(9, hibernateOnBoot);
   }
 
   // ============================================================================
@@ -115,14 +117,21 @@ void setup() {
   display.setFont(defaultFont);
 
   // ============================================================================
-  // HIBERNATION MODE DETECTION (Throttle + Brake during logo display)
+  // HIBERNATION MODE DETECTION (Throttle + Brake during logo display OR EEPROM setting)
   // ============================================================================
   
-  // Check for hibernation trigger during logo display (2 second window)
-  uint32_t hibernationWindow = millis() + 2000;
-  bool hibernationDetected = false;
+  bool hibernationDetected = hibernateOnBoot;  // Check EEPROM hibernation setting first
   
-  while (millis() < hibernationWindow) {
+  // If hibernation was set via menu, clear the EEPROM flag immediately
+  if (hibernateOnBoot) {
+    hibernateOnBoot = false;
+    EEPROM.put(9, hibernateOnBoot);        // Clear hibernation flag in EEPROM
+  }
+  
+  // Also check for manual hibernation trigger during logo display (2 second window)
+  uint32_t hibernationWindow = millis() + 2000;
+  
+  while (millis() < hibernationWindow && !hibernationDetected) {
     dataFSM();                             // Process incoming data to get throttle/brake values
     if (_Query.prepared == 0) prepareNextQuery();  // Prepare next data request
     Message.Process();                     // Handle messaging
@@ -134,7 +143,7 @@ void setup() {
     }
   }
   
-  // If hibernation was detected, enable it and display hibernation message
+  // If hibernation was detected (either via EEPROM or manual trigger), enable it
   if (hibernationDetected) {
     _Hibernate = true;                     // Enable hibernation mode
     
@@ -753,15 +762,19 @@ void displayFSM() {
           M365Settings = true;
           break;
         case 6:
+          hibernateOnBoot = !hibernateOnBoot;
+          break;
+        case 7:
           EEPROM.put(1, autoBig);
           EEPROM.put(2, warnBatteryPercent);
           EEPROM.put(3, bigMode);
           EEPROM.put(4, bigWarn);
+          EEPROM.put(9, hibernateOnBoot);
           Settings = false;
           break;
       } else
       if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {               // brake max + throttle min = change menu position
-        if (menuPos < 6)
+        if (menuPos < 7)
           menuPos++;
           else
           menuPos = 0;
@@ -856,26 +869,32 @@ void displayFSM() {
 
       display.setCursor(0, 6);
 
-      for (uint8_t i = 0; i < 25; i++) {
-        display.setCursor(i * 5, 6);
-        display.print('-');
-      }
-
-      display.setCursor(0, 7);
-
       if (menuPos == 6)
         display.print((char)0x7E);
         else
         display.print(" ");
 
       display.print((const __FlashStringHelper *) confScr7);
+      if (hibernateOnBoot)
+        display.print((const __FlashStringHelper *) l_Yes);
+        else
+        display.print((const __FlashStringHelper *) l_No);
+
+      display.setCursor(0, 7);
+
+      for (uint8_t i = 0; i < 25; i++) {
+        display.setCursor(i * 5, 7);
+        display.print('-');
+      }
 
       display.setCursor(0, 8);
 
       if (menuPos == 7)
         display.print((char)0x7E);
-      else
+        else
         display.print(" ");
+
+      display.print((const __FlashStringHelper *) confScr8);
 
       oldBrakeVal = brakeVal;
       oldThrottleVal = throttleVal;

@@ -24,7 +24,8 @@
   const char confScr4[] PROGMEM = {"Big batt. warn.: "};
   const char confScr5[] PROGMEM = {"Battery info"};
   const char confScr6[] PROGMEM = {"Configure M365"};
-  const char confScr7[] PROGMEM = {"Save and exit"};
+  const char confScr7[] PROGMEM = {"Hibernate on boot: "};
+  const char confScr8[] PROGMEM = {"Save and exit"};
  
   const char infoScr1[] PROGMEM = {"Total distance"};
   const char infoScr2[] PROGMEM = {"Power on time"};
@@ -77,7 +78,8 @@
   const char confScr4[] PROGMEM = {"Messaggio Batteria: "};
   const char confScr5[] PROGMEM = {"Info Batteria"};
   const char confScr6[] PROGMEM = {"Configura M365"};
-  const char confScr7[] PROGMEM = {"Salva e esci"};
+  const char confScr7[] PROGMEM = {"Hibernation avvio: "};
+  const char confScr8[] PROGMEM = {"Salva e esci"};
  
   const char infoScr1[] PROGMEM = {"Distance totale"};
   const char infoScr2[] PROGMEM = {"Tempo acceso"};
@@ -130,7 +132,8 @@
   const char confScr4[] PROGMEM = {"Alerte Batt.: "};
   const char confScr5[] PROGMEM = {"Informations batterie"};
   const char confScr6[] PROGMEM = {"Configure M365"};
-  const char confScr7[] PROGMEM = {"Enregistrer et quitter"};
+  const char confScr7[] PROGMEM = {"Hibernation demarr: "};
+  const char confScr8[] PROGMEM = {"Enregistrer et quitter"};
 
   const char infoScr1[] PROGMEM = {"Distance Totale"};
   const char infoScr2[] PROGMEM = {"Allumée depuis :"};
@@ -183,7 +186,8 @@
   const char confScr4[] PROGMEM = {"Gran alar. bat.: "};
   const char confScr5[] PROGMEM = {"Informacion "};
   const char confScr6[] PROGMEM = {"Configurar M365"};
-  const char confScr7[] PROGMEM = {"Grabar y salir"};
+  const char confScr7[] PROGMEM = {"Hibernar arranque: "};
+  const char confScr8[] PROGMEM = {"Grabar y salir"};
 
   const char infoScr1[] PROGMEM = {"Distancia total"};
   const char infoScr2[] PROGMEM = {"Tiempo encendido"};
@@ -236,7 +240,8 @@
   const char confScr4[] PROGMEM = {"Velke varo. bat.:"};    //Velke varovani baterie
   const char confScr5[] PROGMEM = {"Info o baterii >"};
   const char confScr6[] PROGMEM = {"Nastaveni M365 >"};
-  const char confScr7[] PROGMEM = {"Ulozit a odejit"};
+  const char confScr7[] PROGMEM = {"Hibernace pri spust:"};
+  const char confScr8[] PROGMEM = {"Ulozit a odejit"};
 
   const char infoScr1[] PROGMEM = {"Celkova vzdalenost"};
   const char infoScr2[] PROGMEM = {"Cas od zapnuti"};
@@ -290,7 +295,8 @@
   const char confScr4[] PROGMEM = {"Gr. Batt. Warn.: "};
   const char confScr5[] PROGMEM = {"Batterie Info"};
   const char confScr6[] PROGMEM = {"M365 Konfigurieren"};
-  const char confScr7[] PROGMEM = {"Speichern und beenden"};
+  const char confScr7[] PROGMEM = {"Hibernation Start: "};
+  const char confScr8[] PROGMEM = {"Speichern und beenden"};
  
   const char infoScr1[] PROGMEM = {"Total Entfernung"};
   const char infoScr2[] PROGMEM = {"Power on time"};
