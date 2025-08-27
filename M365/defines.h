@@ -127,7 +127,9 @@ struct {
 
 // Communication flags
 volatile uint8_t _NewDataFlag = 0;   // Set to 1 when new data received, triggers display update
-volatile bool _Hibernate = false;   // Set to true to disable queries (for firmware updates)
+volatile bool _Hibernate = false;   // Hibernation mode: disables M365 queries for firmware updates
+                                     // Activated by holding throttle+brake during startup logo
+                                     // Allows firmware flashing without physical disconnection
 
 // ============================================================================
 // COMMAND DEFINITIONS AND STRUCTURES

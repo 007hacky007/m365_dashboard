@@ -115,6 +115,51 @@ void setup() {
   display.setFont(defaultFont);
 
   // ============================================================================
+  // HIBERNATION MODE DETECTION (Throttle + Brake during logo display)
+  // ============================================================================
+  
+  // Check for hibernation trigger during logo display (2 second window)
+  uint32_t hibernationWindow = millis() + 2000;
+  bool hibernationDetected = false;
+  
+  while (millis() < hibernationWindow) {
+    dataFSM();                             // Process incoming data to get throttle/brake values
+    if (_Query.prepared == 0) prepareNextQuery();  // Prepare next data request
+    Message.Process();                     // Handle messaging
+    
+    // Check if both throttle and brake are engaged during logo display
+    if ((S20C00HZ65.throttle > 150) && (S20C00HZ65.brake > 60)) {
+      hibernationDetected = true;
+      break;  // Exit loop immediately when hibernation is triggered
+    }
+  }
+  
+  // If hibernation was detected, enable it and display hibernation message
+  if (hibernationDetected) {
+    _Hibernate = true;                     // Enable hibernation mode
+    
+    // Display hibernation status message
+    displayClear(0, true);
+    display.set2X();                       // Large text for hibernation message
+    display.setCursor(0, 0);
+    display.println(F("HIBERNATE"));
+    display.println(F("MODE"));
+    display.set1X();
+    display.setCursor(0, 48);
+    display.println(F("Dashboard disabled"));
+    display.println(F("Power cycle to reset"));
+    
+    // Enter infinite loop - hibernation mode active
+    // Communication queries are disabled via _Hibernate flag in processPacket()
+    while (true) {
+      dataFSM();                           // Still process any incoming data
+      Message.Process();                   // Handle messaging
+      WDTcounts = 0;                       // Reset watchdog to prevent reset
+      delay(100);                          // Small delay to reduce CPU usage
+    }
+  }
+
+  // ============================================================================
   // WAIT FOR SCOOTER DATA OR DETECT NO CONNECTION
   // ============================================================================
   
