@@ -63,7 +63,7 @@ const uint16_t LONG_PRESS = 2000;    // Duration for long press detection (ms)
 // Display and warning settings (stored in EEPROM)
 uint8_t warnBatteryPercent = 5;       // Battery warning threshold (5%, 10%, 15%, or 0=off)
 bool autoBig = true;                  // Auto-enable big speedometer when moving
-uint8_t bigMode = 0;                  // Big display mode: 0=speed, 1=current
+uint8_t bigMode = 1;                  // Big display mode: 0=speed, 1=current
 bool bigWarn = true;                  // Show full-screen battery warning
 bool hibernateOnBoot = false;         // One-time hibernation trigger on next boot
 bool showPower = true;                // Show power (W) instead of current (A)
