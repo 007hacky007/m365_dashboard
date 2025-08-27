@@ -117,3 +117,13 @@ UI pictures from version 0.2
 ![alt text](https://i.imgur.com/AHLVTcu.jpg)  
 
 More pictures are coming soon.
+
+---
+
+## CI builds
+
+This repo includes a GitHub Actions workflow that compiles:
+- Arduino Pro Mini (ATmega328P) 16 MHz and 8 MHz .hex
+- ESP32 Dev Module .bin
+
+Artifacts are attached to each workflow run (see the Actions tab > latest run > Artifacts).
