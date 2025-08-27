@@ -94,17 +94,7 @@ void setup() {
   // INITIALIZE DISPLAY
   // ============================================================================
   
-#ifdef DISPLAY_I2C
-  // Initialize I2C communication at 400kHz for better performance
-  Wire.begin();
-  Wire.setClock(400000L);
-  display.begin(&Adafruit128x64, 0x3C);        // Standard 0.96" OLED
-  //display.begin(&SH1106_128x64, 0x3C);       // Alternative: 1.3" OLED
-#endif
-#ifdef DISPLAY_SPI
-  display.begin(&Adafruit128x64, PIN_CS, PIN_DC, PIN_RST);
-  //display.begin(&SH1106_128x64, PIN_CS, PIN_DC, PIN_RST); // Alternative: 1.3" OLED
-#endif
+  oledInit(false); // Centralized OLED init (no splash/logo here)
   
   // Optional: Invert display for better visibility on yellow/blue OLEDs
   // display.displayRemap(true);
@@ -219,7 +209,10 @@ void loop() {
   // Update display when new data arrives
   if (_NewDataFlag == 1) {
     _NewDataFlag = 0;
-    displayFSM();                        // Handle all display logic
+  oledService();               // Ensure I2C is healthy before heavy drawing
+  oledBusy = true;
+  displayFSM();                // Handle all display logic
+  oledBusy = false;
   }
 
   // Process communication messages
@@ -228,6 +221,145 @@ void loop() {
 
   // Reset watchdog counter to prevent system reset
   WDTcounts = 0;
+
+  // Periodic I2C bus health check and auto-recovery
+  oledService();
+}
+
+// =============================================================================
+// I2C/OLED AUTO-RECOVERY HELPERS
+// =============================================================================
+
+// I2C speed management state
+#ifdef DISPLAY_I2C
+static bool s_i2cFast = false;     // false: 100kHz, true: 400kHz
+static uint8_t s_consecOK = 0;     // consecutive OK pings
+#endif
+
+// Attempt to detect and recover a stuck I2C bus, then verify OLED presence
+bool i2cCheckAndRecover() {
+#ifdef DISPLAY_I2C
+  // Quick ping: is OLED responding?
+  Wire.beginTransmission(OLED_I2C_ADDRESS);
+  uint8_t err = Wire.endTransmission();
+  if (err == 0) return true; // All good
+
+  // Try to unstick the bus by toggling SCL and issuing a STOP
+  // Use SDA/SCL pin defines provided by core
+  #if defined(SDA) && defined(SCL)
+    pinMode(SDA, INPUT_PULLUP);
+    pinMode(SCL, INPUT_PULLUP);
+
+  // If SDA is low, clock SCL up to 20 cycles to free the line
+    if (digitalRead(SDA) == LOW) {
+      pinMode(SCL, OUTPUT);
+      for (uint8_t i = 0; i < 20 && digitalRead(SDA) == LOW; i++) {
+        digitalWrite(SCL, HIGH);
+        delayMicroseconds(5);
+        digitalWrite(SCL, LOW);
+        delayMicroseconds(5);
+      }
+      pinMode(SCL, INPUT_PULLUP);
+    }
+
+  // Send a STOP condition manually
+    pinMode(SDA, OUTPUT);
+    digitalWrite(SDA, LOW);
+    delayMicroseconds(5);
+    pinMode(SCL, OUTPUT);
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(SDA, HIGH);
+    delayMicroseconds(5);
+    pinMode(SDA, INPUT_PULLUP);
+    pinMode(SCL, INPUT_PULLUP);
+  #endif
+
+  // Reinit I2C peripheral
+  #if defined(WIRE_HAS_END)
+  Wire.end();
+  #endif
+  delay(1);
+  Wire.begin();
+  Wire.setClock(100000L); // start slow for stability
+  #ifdef WIRE_HAS_TIMEOUT
+    Wire.setWireTimeout(25000, true); // 25ms, reset hardware on timeout
+  #endif
+  delay(1);
+
+  // Re-check device presence
+  Wire.beginTransmission(OLED_I2C_ADDRESS);
+  err = Wire.endTransmission();
+  s_i2cFast = false;
+  s_consecOK = 0;
+  return err == 0;
+#else
+  return true;
+#endif
+}
+
+// Initialize the OLED display and I2C/SPI bus
+void oledInit(bool showLogo) {
+#ifdef DISPLAY_I2C
+  #if defined(WIRE_HAS_END)
+    Wire.end();
+  #endif
+  Wire.begin();
+  Wire.setClock(100000L); // default to 100kHz at boot
+  #ifdef WIRE_HAS_TIMEOUT
+    Wire.setWireTimeout(25000, true);
+  #endif
+  // Init controller (default: SSD1306 128x64)
+  display.begin(&Adafruit128x64, OLED_I2C_ADDRESS);
+  //display.begin(&SH1106_128x64, 0x3C);       // Alternative: 1.3" OLED
+  s_i2cFast = false;
+  s_consecOK = 0;
+#endif
+#ifdef DISPLAY_SPI
+  display.begin(&Adafruit128x64, PIN_CS, PIN_DC, PIN_RST);
+  //display.begin(&SH1106_128x64, PIN_CS, PIN_DC, PIN_RST); // Alternative: 1.3" OLED
+#endif
+  display.setFont(defaultFont);
+  if (showLogo) {
+    display.clear();
+    display.setFont(m365);
+    display.setCursor(0, 0);
+    display.print((char)0x20);
+    display.setFont(defaultFont);
+  }
+}
+
+// Lightweight periodic health check; re-inits OLED upon hiccup
+void oledService() {
+#ifdef DISPLAY_I2C
+  static uint32_t nextCheck = 0;
+  uint32_t now = millis();
+  if ((int32_t)(now - nextCheck) >= 0) {
+    nextCheck = now + 500; // check every 500ms
+    // Avoid re-initialization during drawing to prevent tearing
+    if (oledBusy) return;
+    if (i2cCheckAndRecover()) {
+      // Stability-based promotion to 400kHz
+      if (!s_i2cFast) {
+        if (s_consecOK < 255) s_consecOK++;
+        if (s_consecOK >= 8) { // ~4 seconds of OK at 500ms cadence
+          Wire.setClock(400000L);
+          s_i2cFast = true;
+        }
+      }
+    } else {
+      // Failure: demote to 100kHz and re-init OLED
+      #ifdef DISPLAY_I2C
+        Wire.setClock(100000L);
+      #endif
+      s_i2cFast = false;
+      s_consecOK = 0;
+      if (!oledBusy) {
+        oledInit(false);
+      }
+    }
+  }
+#endif
 }
 
 // ============================================================================

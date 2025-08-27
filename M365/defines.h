@@ -9,6 +9,9 @@
 //#define DISPLAY_SPI    // Use SPI communication for OLED
 #define DISPLAY_I2C     // Use I2C communication for OLED (default)
 
+// OLED I2C address (common values: 0x3C or 0x3D)
+#define OLED_I2C_ADDRESS 0x3C
+
 // Uncomment to enable US units (mph, Fahrenheit) instead of metric (km/h, Celsius)
 //#define US_Version
 
@@ -28,6 +31,7 @@
   #define PIN_D1 11     // Data (MOSI)
 #endif
 #ifdef DISPLAY_I2C
+  #include <Wire.h>
   #include "SSD1306AsciiWire.h"  // I2C version of SSD1306 library
 #endif
 
@@ -83,6 +87,14 @@ volatile bool btnPressed = false;     // Button press flag (unused)
 bool bAlarm = false;                  // Alarm state (unused)
 
 uint32_t timer = 0;                   // General purpose timer for UI timeouts 
+
+// Forward declarations for I2C/OLED recovery helpers
+void oledInit(bool showLogo = true);
+void oledService();
+bool i2cCheckAndRecover();
+
+// Simple guard to avoid OLED re-init in the middle of drawing
+volatile bool oledBusy = false;
 
 // ============================================================================
 // DISPLAY OBJECT INITIALIZATION
