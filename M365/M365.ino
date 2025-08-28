@@ -1306,50 +1306,61 @@ void displayFSM() {
         case 1:
           display.setFont(bigNumb);
           if (showPower) {
-            // Show power without decimals. If > 999 W, switch to kW.
+            // Show power in big digits only.
+            // - W mode: 3 big digits (hundreds, tens, ones), no decimals.
+            // - kW mode: 2 big digits for integer part and 1 big digit for the first decimal.
             {
               uint16_t W = m365_info.pwh; // integer watts
-              if (W > 999) {
-                // kW mode (rounded to nearest whole kW, no decimals)
-                uint16_t kW = (uint16_t)((W + 500) / 1000);
-                // Two big digits: tens and ones of kW
-                tmp_0 = kW / 10;
-                tmp_1 = kW % 10;
+              if (W >= 1000) {
+                // kW with one decimal, rounded
+                uint16_t kW_int = W / 1000;            // integer kW part
+                uint16_t rem = W % 1000;
+                uint16_t kW_dec = (uint16_t)((rem + 50) / 100); // first decimal digit rounded
+                if (kW_dec >= 10) { kW_int += 1; kW_dec = 0; }
+
+                // Two big digits for integer part (tens may be blank)
+                tmp_0 = kW_int / 10; // tens
+                tmp_1 = kW_int % 10; // ones
                 display.setCursor(2, 0);
-                if (tmp_0 > 0)
-                  display.print(tmp_0);
-                else
-                  display.print((char)0x3B);
+                if (tmp_0 > 0) display.print(tmp_0); else display.print((char)0x3B);
                 display.setCursor(32, 0);
                 display.print(tmp_1);
-                // Clear smaller digit slots
-                display.setFont(stdNumb);
-                display.setCursor(75, 0); display.print(' ');
-                display.setCursor(108, 0); display.print(' ');
+
+                // Small dot between integer and decimal (not a number)
                 display.setFont(defaultFont);
+                display.set1X();
+                display.setCursor(58, 0);
+                display.print('.');
+                display.setFont(bigNumb);
+
+                // One big decimal digit
+                display.setCursor(62, 0);
+                display.print((uint8_t)kW_dec);
+
                 // Blink unit when regen (negative current)
+                display.setFont(defaultFont);
                 if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
                   display.set2X();
                   display.setCursor(96, 4);
                   display.print("kW");
                 }
               } else {
-                // W mode: show 4 digits (thousands..ones), no decimals
-                uint8_t d1 = (W / 1000U) % 10U; // thousands
-                uint8_t d2 = (W / 100U) % 10U;  // hundreds
-                uint8_t d3 = (W / 10U) % 10U;   // tens
-                uint8_t d4 = W % 10U;           // ones
-                // First two as big digits (always show leading zeros)
+                // W mode: three big digits without decimals
+                uint8_t d1 = W / 100;          // hundreds
+                uint8_t d2 = (W / 10) % 10;    // tens
+                uint8_t d3 = W % 10;           // ones
+
+                // Hundreds (blank if zero)
                 display.setCursor(2, 0);
-                display.print(d1);
+                if (d1 > 0) display.print(d1); else display.print((char)0x3B);
+                // Tens (blank if zero and hundreds blank)
                 display.setCursor(32, 0);
-                display.print(d2);
-                // Last two as small digits to fit layout
-                display.setFont(stdNumb);
-                display.setCursor(75, 0);
+                if (d1 > 0 || d2 > 0) display.print(d2); else display.print((char)0x3B);
+                // Ones
+                display.setCursor(62, 0);
                 display.print(d3);
-                display.setCursor(108, 0);
-                display.print(d4);
+
+                // Units: W (blink on regen)
                 display.setFont(defaultFont);
                 if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
                   display.set2X();
