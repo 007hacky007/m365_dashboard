@@ -1337,10 +1337,12 @@ void displayFSM() {
                 display.setCursor(62, 0);
                 display.print((uint8_t)kW_dec);
 
-                // Blink unit when regen (negative current)
+                // Clear unit area then draw unit with blink on regen
                 display.setFont(defaultFont);
+                display.set2X();
+                display.setCursor(96, 4);
+                display.print("   "); // clear any previous unit (incl. lingering 'k')
                 if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
-                  display.set2X();
                   display.setCursor(96, 4);
                   display.print("kW");
                 }
@@ -1360,10 +1362,17 @@ void displayFSM() {
                 display.setCursor(62, 0);
                 display.print(d3);
 
-                // Units: W (blink on regen)
+                // Ensure decimal dot from kW mode is cleared
                 display.setFont(defaultFont);
+                display.set1X();
+                display.setCursor(58, 0);
+                display.print(' ');
+
+                // Clear unit area then draw 'W' (blink on regen)
+                display.set2X();
+                display.setCursor(96, 4);
+                display.print("   "); // clear any previous 'kW'
                 if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) {
-                  display.set2X();
                   display.setCursor(108, 4);
                   display.print((const __FlashStringHelper *) l_w);
                 }
@@ -1394,12 +1403,19 @@ void displayFSM() {
               display.print((const __FlashStringHelper *) l_a);
             }
           }
-          // Regen indicator: show 'R' when current is negative
+          // Regen indicator moved to top-right corner; clear old spot
+          display.setFont(defaultFont);
+          display.set1X();
+          // Clear previous bottom-left 'R' if any
+          display.setCursor(54, 5);
+          display.print(' ');
           if (S25C31.current < 0) {
-            display.setFont(defaultFont);
-            display.set1X();
-            display.setCursor(54, 5);
+            display.setCursor(118, 0);
             display.print('R');
+          } else {
+            // Clear top-right 'R' when not regenerating
+            display.setCursor(118, 0);
+            display.print(' ');
           }
           display.set1X();
           display.setCursor(64, 5);
