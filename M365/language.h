@@ -1,4 +1,10 @@
 //***********************************
+// Guard
+//***********************************
+#ifndef M365_LANGUAGE_H
+#define M365_LANGUAGE_H
+
+//***********************************
 //LANGUAGE SELECTION. Uncomment only one line
 //***********************************
 #define LANG_ENG //English
@@ -333,6 +339,11 @@
   const char l_t[] PROGMEM = {"T"};
   
 #endif
+
+//***********************************
+// End guard
+//***********************************
+#endif // M365_LANGUAGE_H
 
 #ifdef LANG_DE
   #define defaultFont System5x7mod
