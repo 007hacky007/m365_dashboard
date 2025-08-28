@@ -1323,41 +1323,39 @@ case 8:
         case 1:
           display.setFont(bigNumb);
           if (showPower) {
-            // Show power as 4 big digits in Watts, no decimals, no kW conversion
-            // Layout: [Th] [Hu] [Te] [On] using bigNumb at x = 2, 32, 62, 92
-            // Values over 9999 are clamped
+            // Show power as 4 digits using stdNumb at 2X (no decimals, no kW)
+            // This avoids bigNumb's special '.' glyph and ensures 4 visible digits
             {
               uint16_t W = m365_info.pwh; // integer watts
               if (W > 9999) W = 9999;
 
-              uint8_t d_th = (W / 1000) % 10;        // thousands
-              uint8_t d_hu = (W / 100) % 10;         // hundreds
-              uint8_t d_te = (W / 10) % 10;          // tens
-              uint8_t d_on = W % 10;                 // ones
+              // Build a 4-char buffer with leading blanks
+              char buf[5];
+              buf[0] = (W >= 1000) ? char('0' + (W / 1000) % 10) : ' ';
+              buf[1] = (W >= 100)  ? char('0' + (W / 100) % 10)  : ' ';
+              buf[2] = (W >= 10)   ? char('0' + (W / 10) % 10)   : ' ';
+              buf[3] = char('0' + (W % 10));
+              buf[4] = 0;
 
-              // Thousands (blank when zero)
-              display.setCursor(2, 0);
-              if (d_th > 0) display.print(d_th); else display.print((char)0x3B);
-              // Hundreds (blank when zero and thousands blank)
-              display.setCursor(32, 0);
-              if (d_th > 0 || d_hu > 0) display.print(d_hu); else display.print((char)0x3B);
-              // Tens
-              display.setCursor(62, 0);
-              if (d_th > 0 || d_hu > 0 || d_te > 0) display.print(d_te); else display.print((char)0x3B);
-              // Ones
-              display.setCursor(92, 0);
-              display.print(d_on);
+              display.setFont(stdNumb);
+              display.set2X();
+              // Right-align within bounds by anchoring ones at x=84 (safe for 2X)
+              // Print digits on row 4 so their bottom aligns with the unit baseline
+              display.setCursor(0, 3);   display.print(buf[0]);  // thousands (or space)
+              display.setCursor(26, 3);  display.print(buf[1]);  // hundreds (or space)
+              display.setCursor(54, 3);  display.print(buf[2]);  // tens (or space)
+              display.setCursor(84, 3);  display.print(buf[3]);  // ones
 
-              // Clear any leftover dots/units from previous big speed/current modes
-              // Use bigNumb to clear big glyph positions; then small font for lower area
-              display.setFont(bigNumb);
-              // Clear potential dot/colon positions used by other big modes
-              display.setCursor(58, 0);  display.print((char)0x3B); // blank glyph
-              display.setCursor(106, 0); display.print((char)0x3B); // blank glyph
-              // Clear any small-font unit remnants in lower area
-              display.setFont(defaultFont);
-              display.set1X();
-              display.setCursor(96, 4); display.print("   ");
+              // Unit at lower-right: place right after ones digit, with clamp
+              {
+                uint8_t ux = display.col(); // end of last printed digit
+                if (ux > 112) ux = 112;     // keep room for a 2X unit (~12-16px)
+                display.setFont(defaultFont);
+                display.setCursor(ux, 4);
+                display.set2X();
+                display.print((const __FlashStringHelper *) l_w);
+                display.set1X();
+              }
             }
           } else {
             // Show current (A)
@@ -1383,6 +1381,9 @@ case 8:
               display.setCursor(108, 4);
               display.print((const __FlashStringHelper *) l_a);
             }
+            display.set1X();
+            display.setCursor(64, 5);
+            display.print((char)0x85); // dot
           }
           // Regen indicator moved to top-right corner; clear old spot
           display.setFont(defaultFont);
@@ -1391,7 +1392,7 @@ case 8:
           display.setCursor(54, 5);
           display.print(' ');
           if (S25C31.current < 0) {
-            // Place 'R' slightly to the right to avoid overlap with the 4th big digit
+            // Place 'R' near the top-right without overlapping digits
             display.setCursor(120, 0);
             display.print('R');
           } else {
@@ -1401,7 +1402,6 @@ case 8:
           }
           display.set1X();
           display.setCursor(64, 5);
-          display.print((char)0x85);
           break;
         default:
           display.setFont(bigNumb);
@@ -1460,9 +1460,14 @@ case 8:
           display.print('.');
           if (vl < 10) display.print('0');
           display.print(vl);
-          display.setFont(defaultFont);
-          display.print((const __FlashStringHelper *) l_v);
-          display.setFont(stdNumb);
+          {
+            uint8_t __ux = display.col();
+            uint8_t __uy = display.row();
+            display.setFont(defaultFont);
+            display.setCursor(__ux, __uy + 1);
+            display.print((const __FlashStringHelper *) l_v);
+            display.setFont(stdNumb);
+          }
         }
 
         display.setCursor(95, 0);
@@ -1499,22 +1504,28 @@ case 8:
         if (m365_info.Sec < 10) display.print('0');
         display.print(m365_info.Sec);
 
-  // Clear the right-side numeric field (row 4) to avoid artifacts across mode switches
+  // Position to draw current/power (avoid pre-clearing to reduce flicker)
   display.setFont(stdNumb);
-  display.setCursor(66, 4);
-  for (uint8_t i = 0; i < 16; i++) display.print(' ');
-  // Draw current/power freshly
-  display.setCursor(68, 4);
+  
 
         if (!showPower) {
+          // Current (fixed field width padding to avoid flashing)
+          // Format: [I].[DD], total width up to 1+1+2=4; pad to 7 columns
+          display.setCursor(60, 4);
+          uint8_t startCol = display.col();
           if (m365_info.curh < 10) display.print(' ');
           display.print(m365_info.curh);
           display.print('.');
           if (m365_info.curl < 10) display.print('0');
           display.print(m365_info.curl);
+          // Capture unit anchor before padding spaces
+          uint8_t endCol = display.col();
+          // Trailing padding to clear remnants (up to fixed width 7)
+          uint8_t printed = endCol - startCol;
+          for (uint8_t k = printed; k < 7; k++) display.print(' ');
           // Move the 'A' unit down to align with the numeric baseline
           {
-            uint8_t __ux = display.col();
+            uint8_t __ux = endCol;
             uint8_t __uy = display.row();
             display.setFont(defaultFont);
             display.setCursor(__ux, __uy + 1);
@@ -1522,14 +1533,31 @@ case 8:
             display.setFont(stdNumb);
           }
         } else {
-          if (m365_info.pwh < 10) display.print(' ');
-          display.print(m365_info.pwh);
-          display.print('.');
-          if (m365_info.pwl < 10) display.print('0');
-          display.print(m365_info.pwl);
+          // Power right-aligned in a fixed 7-char field to avoid flashing
+          // Build digits string for integer watts (max 4 digits)
+          display.setCursor(55, 4);
+          char d[5];
+          uint16_t W = m365_info.pwh;
+          if (W > 9999) W = 9999;
+          uint8_t len = 0;
+          if (W >= 1000) { d[len++] = '0' + (W / 1000) % 10; }
+          if (W >= 100)  { d[len++] = '0' + (W / 100) % 10; }
+          if (W >= 10)   { d[len++] = '0' + (W / 10) % 10; }
+          d[len++] = '0' + (W % 10);
+          d[len] = 0;
+
+          const uint8_t FIELD = 6; // slightly narrower field to keep inside 128px
+          uint8_t startCol = display.col();
+          // Leading spaces to right-align within the field
+          for (uint8_t k = 0; k < FIELD - len; k++) display.print(' ');
+          // Print digits
+          display.print(d);
+          // Anchor for unit is at the end of digits (ones place)
+          uint8_t endCol = display.col();
+          // Nothing after digits (no trailing pad), because leading pad already cleared
           // Move the 'W' unit down to align with the numeric baseline
           {
-            uint8_t __ux = display.col();
+            uint8_t __ux = endCol;
             uint8_t __uy = display.row();
             display.setFont(defaultFont);
             display.setCursor(__ux, __uy + 1);
