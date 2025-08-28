@@ -17,7 +17,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${HERE}/.." && pwd)"
 BUILD_DIR="${ROOT}/build-local"
 SKETCH_DIR="${ROOT}/M365"
-SIM=1
+# SIM=1 enables simulator variants; default off unless env is set
+SIM=${SIM:-0}
 
 ADDITIONAL_URL="https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
 
@@ -33,7 +34,7 @@ die()  { echo "[x] $*"; exit 1; }
 if ! need_cmd arduino-cli; then
   step "arduino-cli not found; installing via Homebrew..."
   if ! need_cmd brew; then die "Homebrew not found. Install from https://brew.sh/"; fi
-  brew install arduino-cli || die "Failed to install arduino-cli"
+  brew install arduino-cli >/dev/null || die "Failed to install arduino-cli"
 fi
 
 # 2) Optional clean
@@ -47,14 +48,15 @@ mkdir -p "${BUILD_DIR}"
 step "Initializing Arduino CLI config"
 arduino-cli config init || true
 arduino-cli config set library.enable_unsafe_install true
+arduino-cli config set board_manager.additional_urls "${ADDITIONAL_URL}" || true
 
 # 4) Update index and install cores
 step "Updating core index (incl. ESP32)"
-arduino-cli core update-index --additional-urls "${ADDITIONAL_URL}"
+arduino-cli core update-index
 
 step "Installing cores (arduino:avr, esp32:esp32)"
 arduino-cli core install arduino:avr
-arduino-cli core install esp32:esp32 --additional-urls "${ADDITIONAL_URL}"
+arduino-cli core install esp32:esp32
 
 # 5) Install required libraries from repo ZIPs
 step "Installing libraries from ZIPs"
@@ -83,16 +85,21 @@ fi
 # Filter targets via TARGETS env if provided
 if [[ -n "${TARGETS:-}" ]]; then
   step "Filtering targets to: ${TARGETS}"
-  mapfile -t WANT < <(echo "${TARGETS}" | tr ' ' '\n')
   tmpN=(); tmpF=(); tmpL=()
-  for i in "${!NAMES[@]}"; do
-    for w in "${WANT[@]}"; do
+  # Iterate words in TARGETS (space-separated)
+  for w in ${TARGETS}; do
+    for i in "${!NAMES[@]}"; do
       if [[ "${NAMES[$i]}" == "$w" ]]; then
-    tmpN+=("${NAMES[$i]}"); tmpF+=("${FQBNS[$i]}"); tmpL+=("${FLAGS[$i]}")
+        tmpN+=("${NAMES[$i]}"); tmpF+=("${FQBNS[$i]}"); tmpL+=("${FLAGS[$i]}")
       fi
     done
   done
-  NAMES=("${tmpN[@]}"); FQBNS=("${tmpF[@]}"); FLAGS=("${tmpL[@]}")
+  if [[ ${#tmpN[@]} -gt 0 ]]; then
+    NAMES=("${tmpN[@]}"); FQBNS=("${tmpF[@]}"); FLAGS=("${tmpL[@]}")
+  else
+    warn "No targets matched TARGETS filter: ${TARGETS}"
+    NAMES=(); FQBNS=(); FLAGS=()
+  fi
 fi
 
 # 7) Compile
