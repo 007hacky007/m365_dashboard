@@ -18,7 +18,7 @@ ROOT="$(cd "${HERE}/.." && pwd)"
 BUILD_DIR="${ROOT}/build-local"
 SKETCH_DIR="${ROOT}/M365"
 # SIM=1 enables simulator variants; default off unless env is set
-SIM=${SIM:-0}
+SIM=${SIM:-1}
 
 ADDITIONAL_URL="https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
 
