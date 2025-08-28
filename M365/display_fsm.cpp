@@ -158,41 +158,33 @@ void displayFSM() {
 
       // Apply action on throttle press when brake is released (neutral or below)
       if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal <= 0) && (oldBrakeVal <= 0)) switch (menuPos) {
-        case 0: autoBig = !autoBig; break;
-        case 1: bigMode = (bigMode == 1) ? 0 : 1; break;
-        case 2: switch (warnBatteryPercent) { case 0: warnBatteryPercent = 5; break; case 5: warnBatteryPercent = 10; break; case 10: warnBatteryPercent = 15; break; default: warnBatteryPercent = 0; } break;
-        case 3: bigWarn = !bigWarn; break;
-        case 4: ShowBattInfo = true; break;
-        case 5: M365Settings = true; break;
-        case 6:
+  case 0: autoBig = !autoBig; break;
+  case 1: bigMode = (bigMode == 1) ? 0 : 1; break;
+  case 2: switch (warnBatteryPercent) { case 0: warnBatteryPercent = 5; break; case 5: warnBatteryPercent = 10; break; case 10: warnBatteryPercent = 15; break; default: warnBatteryPercent = 0; } break;
+  case 3: bigWarn = !bigWarn; break;
+  case 4: ShowBattInfo = true; break;
+  case 5: M365Settings = true; break;
 #if defined(ARDUINO_ARCH_ESP32)
-          WiFiSettings = true; wifiMenuPos = 0; break;
+  case 6: WiFiSettings = true; wifiMenuPos = 0; break;
+  case 7: showPower = !showPower; break;
+  case 8: showVoltageMain = !showVoltageMain; break;
+  case 9: bigFontStyle = (bigFontStyle == 0) ? 1 : 0; break;
+  case 10: hibernateOnBoot = !hibernateOnBoot; break;
+  case 11: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(11, wifiEnabled); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM_COMMIT(); Settings = false; break;
 #else
-          showPower = !showPower; break;
-#endif
-        case 7:
-#if defined(ARDUINO_ARCH_ESP32)
-          showPower = !showPower; break;
-#else
-          hibernateOnBoot = !hibernateOnBoot; break;
-#endif
-        case 8: showVoltageMain = !showVoltageMain; break;
-        case 9:
-#if defined(ARDUINO_ARCH_ESP32)
-          hibernateOnBoot = !hibernateOnBoot; break;
-#else
-          EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(12, showVoltageMain); EEPROM_COMMIT(); Settings = false; break;
-#endif
-#if defined(ARDUINO_ARCH_ESP32)
-        case 10: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(11, wifiEnabled); EEPROM.put(12, showVoltageMain); EEPROM_COMMIT(); Settings = false; break;
+  case 6: showPower = !showPower; break;
+  case 7: showVoltageMain = !showVoltageMain; break;
+  case 8: bigFontStyle = (bigFontStyle == 0) ? 1 : 0; break;
+  case 9: hibernateOnBoot = !hibernateOnBoot; break;
+  case 10: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM_COMMIT(); Settings = false; break;
 #endif
       } else if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) {
 #if defined(ARDUINO_ARCH_ESP32)
-        if (menuPos < 10)
+  if (menuPos < 11)
 #else
-        if (menuPos < 9)
+  if (menuPos < 10)
 #endif
-          menuPos++; else menuPos = 0; timer = millis() + LONG_PRESS;
+    menuPos++; else menuPos = 0; timer = millis() + LONG_PRESS;
       }
 
 #if defined(ARDUINO_ARCH_ESP32)
@@ -241,11 +233,11 @@ void displayFSM() {
   displayClear(2);
   display.set1X(); display.setFont(defaultFont);
       // Determine total items depending on platform
-      uint8_t totalItems =
+    uint8_t totalItems =
 #if defined(ARDUINO_ARCH_ESP32)
-  11; // indices 0..10
+  12; // indices 0..11
 #else
-  10; // indices 0..9
+  11; // indices 0..10
 #endif
       // Compute top index so selection stays within window
       uint8_t top = 0;
@@ -273,14 +265,16 @@ void displayFSM() {
 #if defined(ARDUINO_ARCH_ESP32)
     case 6: display.print((const __FlashStringHelper *) confScr10); break;
     case 7: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
-    case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
-    case 9: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
-    case 10: display.print((const __FlashStringHelper *) confScr8); break;
+  case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
+  case 9: display.print((const __FlashStringHelper *) confScr12); display.print(bigFontStyle ? (const __FlashStringHelper *) confScr12b : (const __FlashStringHelper *) confScr12a); break;
+  case 10: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+  case 11: display.print((const __FlashStringHelper *) confScr8); break;
 #else
-          case 6: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
-          case 7: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
-          case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
-          case 9: display.print((const __FlashStringHelper *) confScr8); break;
+      case 6: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
+      case 7: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
+      case 8: display.print((const __FlashStringHelper *) confScr12); display.print(bigFontStyle ? (const __FlashStringHelper *) confScr12b : (const __FlashStringHelper *) confScr12a); break;
+      case 9: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+      case 10: display.print((const __FlashStringHelper *) confScr8); break;
 #endif
     default: break;
   }
@@ -305,30 +299,35 @@ void displayFSM() {
     if (displayClear(4)) { display.setFont(m365); display.setCursor(0, 0); display.print((char)0x21); display.setFont(defaultFont); }
   } else if ((m365_info.sph > 1) && (autoBig)) {
     displayClear(5); display.set1X();
-    switch (bigMode) {
+  switch (bigMode) {
       case 1:
-        display.setFont(bigNumb);
+    // Select font per setting: STD = bigNumb @ 1X, DIGIT = segNumb @ 2X
+    if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
         if (showPower) {
           uint16_t W = m365_info.pwh; if (W > 9999) W = 9999;
           char buf[5]; buf[0] = (W >= 1000) ? char('0' + (W / 1000) % 10) : ' ';
           buf[1] = (W >= 100)  ? char('0' + (W / 100) % 10)  : ' ';
           buf[2] = (W >= 10)   ? char('0' + (W / 10) % 10)   : ' ';
           buf[3] = char('0' + (W % 10)); buf[4] = 0;
-          display.setFont(stdNumb); display.set2X();
-          display.setCursor(0, 3);  display.print(buf[0]);
-          display.setCursor(26, 3); display.print(buf[1]);
-          display.setCursor(54, 3); display.print(buf[2]);
-          display.setCursor(84, 3); display.print(buf[3]);
+          // Translate spaces to ';' (blank glyph) only for DIGIT
+          if (bigFontStyle == 1) { for (uint8_t i = 0; i < 3; ++i) if (buf[i] == ' ') buf[i] = (char)0x3B; }
+          if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
+          uint8_t yDigits = (bigFontStyle == 0) ? 0 : 3;
+          display.setCursor(0, yDigits);  display.print(buf[0]);
+          display.setCursor(26, yDigits); display.print(buf[1]);
+          display.setCursor(54, yDigits); display.print(buf[2]);
+          display.setCursor(84, yDigits); display.print(buf[3]);
           uint8_t ux = display.col(); if (ux > 112) ux = 112;
-          display.setFont(defaultFont); display.setCursor(ux, 4); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
+          uint8_t yUnit = (bigFontStyle == 0) ? 4 : 4;
+          display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
         } else {
           tmp_0 = m365_info.curh / 10; tmp_1 = m365_info.curh % 10;
-          display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print((char)0x3B);
+          display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print(bigFontStyle == 1 ? (char)0x3B : ' ');
           display.setCursor(32, 0); display.print(tmp_1);
           tmp_0 = m365_info.curl / 10; tmp_1 = m365_info.curl % 10;
           display.setCursor(75, 0); display.print(tmp_0);
-          display.setCursor(108, 0); display.setFont(stdNumb); display.print(tmp_1); display.setFont(defaultFont);
-          if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, 4); display.print((const __FlashStringHelper *) l_a); }
+          display.setCursor(108, 0); if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); } display.print(tmp_1); display.setFont(defaultFont);
+          if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, (bigFontStyle == 0) ? 3 : 4); display.print((const __FlashStringHelper *) l_a); }
           display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
         }
         display.setFont(defaultFont); display.set1X();
@@ -336,13 +335,14 @@ void displayFSM() {
         display.set1X(); display.setCursor(64, 5);
         break;
       default:
-        display.setFont(bigNumb);
+  // Speed big mode
+  if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
         tmp_0 = m365_info.sph / 10; tmp_1 = m365_info.sph % 10;
-        display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print((char)0x3B);
+        display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print(bigFontStyle == 1 ? (char)0x3B : ' ');
         display.setCursor(32, 0); display.print(tmp_1);
         display.setCursor(75, 0); display.print(m365_info.spl);
         display.setCursor(106, 0); display.print((char)0x3A);
-        display.setFont(defaultFont); display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
+  display.setFont(defaultFont); display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
     }
     showBatt(S25C31.remainPercent, S25C31.current < 0);
   } else {
@@ -429,30 +429,30 @@ void displayFSM() {
 #ifdef US_Version
       m365_info.milh = m365_info.milh/1.609; m365_info.mill = m365_info.mill/1.609; m365_info.temp = m365_info.temp*9/5+32;
 #endif
-      display.set1X(); display.setFont(stdNumb); display.setCursor(0, 0);
+  display.set1X(); display.setFont(stdNumb); display.setCursor(0, 0);
       if (!showVoltageMain) {
         if (m365_info.sph < 10) display.print(' ');
         display.print(m365_info.sph); display.print('.'); display.print(m365_info.spl);
-        display.setFont(defaultFont); display.print((const __FlashStringHelper *) l_kmh); display.setFont(stdNumb);
+  display.setFont(defaultFont); display.print((const __FlashStringHelper *) l_kmh); display.setFont(stdNumb);
       } else {
         uint16_t vh = m365_info.vh; uint16_t vl = m365_info.vl; if (vh < 10) display.print(' ');
         display.print(vh); display.print('.'); if (vl < 10) display.print('0'); display.print(vl);
-        uint8_t __ux = display.col(); uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_v); display.setFont(stdNumb);
+  uint8_t __ux = display.col(); uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_v); display.setFont(stdNumb);
       }
       display.setCursor(95, 0);
       if (m365_info.temp < 10) display.print(' '); display.print(m365_info.temp);
-      display.setFont(defaultFont); display.print((char)0x80); display.print((const __FlashStringHelper *) l_c); display.setFont(stdNumb);
+  display.setFont(defaultFont); display.print((char)0x80); display.print((const __FlashStringHelper *) l_c); display.setFont(stdNumb);
       display.setCursor(0, 2);
       if (m365_info.milh < 10) display.print(' '); display.print(m365_info.milh); display.print('.'); if (m365_info.mill < 10) display.print('0'); display.print(m365_info.mill);
-      { uint8_t __ux = display.col(); uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_km); display.setFont(stdNumb); }
+  { uint8_t __ux = display.col(); uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_km); display.setFont(stdNumb); }
       display.setCursor(0, 4);
       if (m365_info.Min < 10) display.print('0'); display.print(m365_info.Min); display.print(':'); if (m365_info.Sec < 10) display.print('0'); display.print(m365_info.Sec);
-      display.setFont(stdNumb);
+  display.setFont(stdNumb);
       if (!showPower) {
         display.setCursor(60, 4);
         uint8_t startCol = display.col(); if (m365_info.curh < 10) display.print(' '); display.print(m365_info.curh); display.print('.'); if (m365_info.curl < 10) display.print('0'); display.print(m365_info.curl);
         uint8_t endCol = display.col(); uint8_t printed = endCol - startCol; for (uint8_t k = printed; k < 7; k++) display.print(' ');
-        { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_a); display.setFont(stdNumb); }
+  { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_a); display.setFont(stdNumb); }
       } else {
         display.setCursor(55, 4);
         char d[5]; uint16_t W = m365_info.pwh; if (W > 9999) W = 9999; uint8_t len = 0;
@@ -460,8 +460,8 @@ void displayFSM() {
         if (W >= 100)  { d[len++] = '0' + (W / 100) % 10; }
         if (W >= 10)   { d[len++] = '0' + (W / 10) % 10; }
         d[len++] = '0' + (W % 10); d[len] = 0;
-        const uint8_t FIELD = 6; for (uint8_t k = 0; k < FIELD - len; k++) display.print(' ');
-        display.print(d); uint8_t endCol = display.col(); { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_w); display.setFont(stdNumb); }
+  const uint8_t FIELD = 6; for (uint8_t k = 0; k < FIELD - len; k++) display.print(' ');
+  display.print(d); uint8_t endCol = display.col(); { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_w); display.setFont(stdNumb); }
       }
     }
     showBatt(S25C31.remainPercent, S25C31.current < 0);

@@ -171,7 +171,7 @@ void simTick() {
       if (braking) {
         S25C31.current = (int16_t)(-700 - up * 8);
       } else {
-        S25C31.current = (int16_t)(up * 20);
+        S25C31.current = (int16_t)(up * 40);
       }
     }
   }

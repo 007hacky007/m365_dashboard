@@ -115,10 +115,11 @@ void setup() {
     cfgKERS = EEPROM.read(8);              // Regenerative braking setting
     hibernateOnBoot = EEPROM.read(9);      // One-time hibernation trigger
   showPower = EEPROM.read(10);           // Display power instead of current
-  showVoltageMain = EEPROM.read(12);     // Show voltage on main instead of speed
 #if defined(ARDUINO_ARCH_ESP32)
+  showVoltageMain = EEPROM.read(12);     // Show voltage on main instead of speed
   wifiEnabled = EEPROM.read(11);         // WiFi/OTA toggle
 #endif
+  bigFontStyle = EEPROM.read(13);        // Big font style: 0=STD,1=DIGIT
   } else {
     // First time setup - save default values to EEPROM
     EEPROM.put(0, 128);                    // Magic number to indicate valid config
@@ -136,6 +137,7 @@ void setup() {
   EEPROM.put(11, wifiEnabled);
 #endif
   EEPROM.put(12, showVoltageMain);
+    EEPROM.put(13, bigFontStyle);
   EEPROM_COMMIT();
   }
 

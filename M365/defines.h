@@ -44,6 +44,9 @@
 #include "fonts/System5x7mod.h"
 #include "fonts/stdNumb.h"
 #include "fonts/bigNumb.h"
+#include "fonts/segNumb.h"
+// Optional alternate: segNumbBold is available but unused by default
+//#include "fonts/segNumbBold.h"
 
 // System
 #include <EEPROM.h>
@@ -69,12 +72,13 @@ bool displayClear(byte ID = 1, bool force = false);
   uint8_t warnBatteryPercent = 5;
   bool autoBig = true;
   uint8_t bigMode = 1;
+  uint8_t bigFontStyle = 1; // 0=STD, 1=DIGIT
   bool bigWarn = true;
   bool hibernateOnBoot = false;
   bool showPower = true;
   bool showVoltageMain = true;
 #else
-  extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode;
+  extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode; extern uint8_t bigFontStyle;
   extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
 #endif
 
