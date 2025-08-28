@@ -1,3 +1,7 @@
+// Rewritten clean header
+#ifndef M365_DEFINES_H
+#define M365_DEFINES_H
+
 #include <Arduino.h>
 #if defined(ARDUINO_ARCH_AVR)
   #include <avr/pgmspace.h>
@@ -5,185 +9,227 @@
   #include <pgmspace.h>
 #endif
 
-// Watchdog: real library on AVR, lightweight stub elsewhere
+// Watchdog abstraction
 #if defined(ARDUINO_ARCH_AVR)
   #include "WatchDog.h"
 #else
-  namespace WatchDog {
-    inline void init(void (*)(void), uint32_t) { /* no-op on non-AVR */ }
-  }
+  namespace WatchDog { inline void init(void (*)(void), uint32_t) {} }
 #endif
 
-// ============================================================================
-// DISPLAY CONFIGURATION
-// ============================================================================
-
-// Select either SPI or I2C(Wire) Display Mode
-// Only one should be enabled at a time
-//#define DISPLAY_SPI    // Use SPI communication for OLED
-#define DISPLAY_I2C     // Use I2C communication for OLED (default)
-
-// OLED I2C address (common values: 0x3C or 0x3D)
-#define OLED_I2C_ADDRESS 0x3C
-
-// Uncomment to enable US units (mph, Fahrenheit) instead of metric (km/h, Celsius)
-//#define US_Version
-
-// ============================================================================
-// DISPLAY LIBRARY INCLUDES AND PIN DEFINITIONS
-// ============================================================================
+// Display config: choose one
+//#define DISPLAY_SPI
+#define DISPLAY_I2C
 
 #include "SSD1306Ascii.h"
 #ifdef DISPLAY_SPI
   #include <SPI.h>
   #include "SSD1306AsciiSpi.h"
-  // SPI pin definitions for OLED display
-  #define PIN_CS  10    // Chip Select
-  #define PIN_RST 9     // Reset
-  #define PIN_DC  8     // Data/Command
-  #define PIN_D0 13     // Clock (SCK)
-  #define PIN_D1 11     // Data (MOSI)
+  #define PIN_CS  10
+  #define PIN_RST 9
+  #define PIN_DC  8
+  #define PIN_D0 13
+  #define PIN_D1 11
 #endif
 #ifdef DISPLAY_I2C
   #include <Wire.h>
-  #include "SSD1306AsciiWire.h"  // I2C version of SSD1306 library
+  #include "SSD1306AsciiWire.h"
+  // Default SSD1306 I2C address
+  #ifndef OLED_I2C_ADDRESS
+  #define OLED_I2C_ADDRESS 0x3C
+  #endif
 #endif
 
-// ============================================================================
-// FONT INCLUDES
-// ============================================================================
+// Fonts
+#include "fonts/m365.h"
+#include "fonts/System5x7mod.h"
+#include "fonts/stdNumb.h"
+#include "fonts/bigNumb.h"
 
-#include "fonts/m365.h"        // Custom M365 icons and symbols
-#include "fonts/System5x7mod.h"  // Modified system font
-#include "fonts/stdNumb.h"     // Standard numbers font
-#include "fonts/bigNumb.h"     // Large numbers font for speedometer
+// System
+#include <EEPROM.h>
+#include "language.h"
+#include "messages.h"
 
-// ============================================================================
-// SYSTEM INCLUDES AND MESSAGING
-// ============================================================================
-
-#include <EEPROM.h>            // For storing settings persistently
-#include "language.h"          // Multi-language support
-#include "messages.h"          // Communication protocol handling
-
-MessagesClass Message;         // Global message handler instance
-
-// ============================================================================
-// CONFIGURATION VARIABLES AND DEFAULTS
-// ============================================================================
-
-// Enable to run without a real scooter/bus. Feeds synthetic frames so the UI works in simulators.
-// You can define this at compile time (e.g., in Wokwi or via build flags).
-// #define SIM_MODE
-
-const uint16_t LONG_PRESS = 2000;    // Duration for long press detection (ms)
-
-// Display and warning settings (stored in EEPROM)
-uint8_t warnBatteryPercent = 5;       // Battery warning threshold (5%, 10%, 15%, or 0=off)
-bool autoBig = true;                  // Auto-enable big speedometer when moving
-uint8_t bigMode = 1;                  // Big display mode: 0=speed, 1=current
-bool bigWarn = true;                  // Show full-screen battery warning
-bool hibernateOnBoot = false;         // One-time hibernation trigger on next boot
-bool showPower = true;                // Show power (W) instead of current (A)
-bool showVoltageMain = true;         // Show battery voltage instead of speed on main page
-// ESP32-only: WiFi AP + OTA toggle (persisted). Ignored on AVR builds.
-#if defined(ARDUINO_ARCH_ESP32)
-bool wifiEnabled = false;             // Start WiFi AP and OTA server
+#ifdef M365_DEFINE_GLOBALS
+  MessagesClass Message;
 #else
-const bool wifiEnabled = false;       // Not supported on AVR
+  extern MessagesClass Message;
 #endif
 
-// Menu state variables
-bool Settings = false;                // True when in settings menu
-bool ShowBattInfo = false;            // True when showing battery details
-bool M365Settings = false;            // True when in M365 scooter settings
-bool WiFiSettings = false;            // ESP32: WiFi/OTA submenu active
-
-uint8_t menuPos = 0;                  // Current position in main settings menu
-uint8_t sMenuPos = 0;                 // Current position in M365 settings menu
-uint8_t wifiMenuPos = 0;              // ESP32: WiFi submenu position
-
-// M365 scooter configuration (stored in EEPROM)
-bool cfgCruise = false;                // Cruise control enabled
-bool cfgTailight = true;             // Rear light configuration
-uint8_t cfgKERS = 0;                  // Regenerative braking: 0=weak, 1=medium, 2=strong
-
-// Input handling variables
-volatile int16_t oldBrakeVal = -1;    // Previous brake lever state
-volatile int16_t oldThrottleVal = -1; // Previous throttle state
-volatile bool btnPressed = false;     // Button press flag (unused)
-bool bAlarm = false;                  // Alarm state (unused)
-
-uint32_t timer = 0;                   // General purpose timer for UI timeouts 
-
-// Forward declarations for I2C/OLED recovery helpers
+// Shared prototypes
 void oledInit(bool showLogo = true);
 void oledService();
 bool i2cCheckAndRecover();
+bool displayClear(byte ID = 1, bool force = false);
 
-// Simple guard to avoid OLED re-init in the middle of drawing
-volatile bool oledBusy = false;
+// Config/state
+#define LONG_PRESS 2000
 
-// ============================================================================
-// DISPLAY OBJECT INITIALIZATION
-// ============================================================================
+#ifdef M365_DEFINE_GLOBALS
+  uint8_t warnBatteryPercent = 5;
+  bool autoBig = true;
+  uint8_t bigMode = 1;
+  bool bigWarn = true;
+  bool hibernateOnBoot = false;
+  bool showPower = true;
+  bool showVoltageMain = true;
+#else
+  extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode;
+  extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
+  #ifdef M365_DEFINE_GLOBALS
+    bool wifiEnabled = false;
+  #else
+    extern bool wifiEnabled;
+  #endif
+#else
+  static const bool wifiEnabled = false;
+#endif
+
+#ifdef M365_DEFINE_GLOBALS
+  bool Settings = false, ShowBattInfo = false, M365Settings = false, WiFiSettings = false;
+  uint8_t menuPos = 0, sMenuPos = 0, wifiMenuPos = 0;
+#else
+  extern bool Settings, ShowBattInfo, M365Settings, WiFiSettings;
+  extern uint8_t menuPos, sMenuPos, wifiMenuPos;
+#endif
+
+// UI alternate screens and per-trip metrics (since power on)
+#ifdef M365_DEFINE_GLOBALS
+  uint8_t uiAltScreen = 0; // 0=main, 1=trip stats, 2=odometer
+  uint32_t tripEnergy_Wh_x100 = 0; // hundredths of Wh
+  uint32_t lastPowerOnTime_s = 0;
+  uint16_t tripMaxCurrent_cA = 0; // centi-amps
+  uint32_t tripMaxPower_Wx100 = 0; // W*100
+  uint16_t tripMinVoltage_cV = 0xFFFF; // centi-volts
+  uint16_t tripMaxVoltage_cV = 0;     // centi-volts
+#else
+  extern uint8_t uiAltScreen;
+  extern uint32_t tripEnergy_Wh_x100;
+  extern uint32_t lastPowerOnTime_s;
+  extern uint16_t tripMaxCurrent_cA;
+  extern uint32_t tripMaxPower_Wx100;
+  extern uint16_t tripMinVoltage_cV;
+  extern uint16_t tripMaxVoltage_cV;
+#endif
+
+// Brake hold detection state (for cycling screens)
+#ifdef M365_DEFINE_GLOBALS
+  bool brakeHoldArmed = false;
+  bool brakeHoldLatched = false;
+#else
+  extern bool brakeHoldArmed;
+  extern bool brakeHoldLatched;
+#endif
+
+#ifdef M365_DEFINE_GLOBALS
+  bool cfgCruise = false, cfgTailight = true; uint8_t cfgKERS = 0;
+#else
+  extern bool cfgCruise, cfgTailight; extern uint8_t cfgKERS;
+#endif
+
+#ifdef M365_DEFINE_GLOBALS
+  volatile int16_t oldBrakeVal = -1, oldThrottleVal = -1; volatile bool btnPressed = false;
+  bool bAlarm = false; uint32_t timer = 0; volatile bool oledBusy = false;
+#else
+  extern volatile int16_t oldBrakeVal, oldThrottleVal; extern volatile bool btnPressed; extern bool bAlarm; extern uint32_t timer; extern volatile bool oledBusy;
+#endif
 
 #ifdef DISPLAY_SPI
-SSD1306AsciiSpi display;             // SPI display object
+  #ifdef M365_DEFINE_GLOBALS
+    SSD1306AsciiSpi display;
+  #else
+    extern SSD1306AsciiSpi display;
+  #endif
 #endif
 #ifdef DISPLAY_I2C
-SSD1306AsciiWire display;            // I2C display object
+  #ifdef M365_DEFINE_GLOBALS
+    SSD1306AsciiWire display;
+  #else
+    extern SSD1306AsciiWire display;
+  #endif
 #endif
 
-// ============================================================================
-// SCOOTER CONFIGURATION
-// ============================================================================
+#ifdef M365_DEFINE_GLOBALS
+  bool WheelSize = true; uint8_t WDTcounts = 0; void(* resetFunc) (void) = 0;
+#else
+  extern bool WheelSize; extern uint8_t WDTcounts; extern void(* resetFunc) (void);
+#endif
 
-bool WheelSize = true;              // false = 8.5" wheels, true = 10" wheels
-
-// ============================================================================
-// WATCHDOG AND RESET FUNCTIONALITY
-// ============================================================================
-
-uint8_t WDTcounts = 0;               // Watchdog counter to prevent system freeze
-void(* resetFunc) (void) = 0;        // Function pointer for software reset
-
-// ============================================================================
-// COMMUNICATION PROTOCOL DEFINITIONS
-// ============================================================================
-
-// UART selection for M365 BUS
+// Comm defs
 #if defined(ARDUINO_ARCH_ESP32)
   #include <HardwareSerial.h>
   #include <WiFi.h>
   #include <WebServer.h>
   #include <Update.h>
-  #ifndef M365_UART_NUM
-    #define M365_UART_NUM 1
-  #endif
+  #define XIAOMI_PORT Serial1
   #ifndef M365_UART_RX_PIN
     #define M365_UART_RX_PIN 16
   #endif
   #ifndef M365_UART_TX_PIN
     #define M365_UART_TX_PIN 17
   #endif
-  #define XIAOMI_PORT Serial1        // Use UART1 by default on ESP32
   #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud), SERIAL_8N1, M365_UART_RX_PIN, M365_UART_TX_PIN)
+  // Expose OTA globals from main sketch
+  extern WebServer otaServer;
+  extern bool otaRunning;
+  extern String otaSSID;
+  extern String otaPASS;
+  void otaBegin();
+  void otaEnd();
+  void otaService();
 #else
-  #define XIAOMI_PORT Serial           // Use hardware serial for M365 communication
+  #define XIAOMI_PORT Serial
   #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud))
 #endif
-// Safely guard AVR-specific UART RX enable/disable for portability with newer cores
+
+// SIM analog inputs (for Wokwi pots)
+#if defined(SIM_MODE)
+  // Expose SIM stationary flag for UI/debug
+  #ifdef M365_DEFINE_GLOBALS
+    volatile bool gSimStationary = false;
+  #else
+    extern volatile bool gSimStationary;
+  #endif
+  #if defined(ARDUINO_ARCH_ESP32)
+    #ifndef SIM_THROTTLE_PIN
+  #define SIM_THROTTLE_PIN 36 // SVP
+    #endif
+    #ifndef SIM_BRAKE_PIN
+  #define SIM_BRAKE_PIN    39 // SVN
+    #endif
+    #ifndef SIM_SPEED_PIN
+      #define SIM_SPEED_PIN    34 // ADC1 CH6
+    #endif
+    #ifndef SIM_STATIONARY_PIN
+      #define SIM_STATIONARY_PIN 32 // GPIO32, digital input with internal pull-up
+    #endif
+  #else
+    #ifndef SIM_THROTTLE_PIN
+      #define SIM_THROTTLE_PIN A0
+    #endif
+    #ifndef SIM_BRAKE_PIN
+      #define SIM_BRAKE_PIN    A1
+    #endif
+    #ifndef SIM_SPEED_PIN
+      #define SIM_SPEED_PIN    A2
+    #endif
+    #ifndef SIM_STATIONARY_PIN
+      #define SIM_STATIONARY_PIN 2 // D2, digital input with internal pull-up
+    #endif
+  #endif
+#endif
+
 #if defined(UCSR0B) && defined(RXEN0)
   #define RX_DISABLE UCSR0B &= ~_BV(RXEN0);
   #define RX_ENABLE  UCSR0B |=  _BV(RXEN0);
 #else
-  // Non-AVR or cores without UCSR0B: no-op to keep build working
   #define RX_DISABLE
   #define RX_ENABLE
 #endif
 
-// EEPROM helpers: required on ESP32 to start/commit emulated EEPROM
 #if defined(ARDUINO_ARCH_ESP32)
   #define EEPROM_START(sz) EEPROM.begin((sz))
   #define EEPROM_COMMIT()  EEPROM.commit()
@@ -192,162 +238,125 @@ void(* resetFunc) (void) = 0;        // Function pointer for software reset
   #define EEPROM_COMMIT()  ((void)0)
 #endif
 
-// Query structure for sending commands to M365
-struct {
-  uint8_t prepared;                  // 1 if query is ready to send, 0 after sending
-  uint8_t DataLen;                   // Length of data to send
-  uint8_t buf[16];                   // Buffer containing the query
-  uint16_t cs;                       // Checksum of the data
-  uint8_t _dynQueries[5];            // Array of dynamic query indices
-  uint8_t _dynSize = 0;              // Number of dynamic queries
-} _Query;
+struct QUERY_t { uint8_t prepared, DataLen; uint8_t buf[16]; uint16_t cs; uint8_t _dynQueries[5]; uint8_t _dynSize; };
+#ifdef M365_DEFINE_GLOBALS
+  QUERY_t _Query = {0};
+#else
+  extern QUERY_t _Query;
+#endif
 
-// Communication flags
-volatile uint8_t _NewDataFlag = 0;   // Set to 1 when new data received, triggers display update
-volatile bool _Hibernate = false;   // Hibernation mode: disables M365 queries for firmware updates
-                                     // Activated by holding throttle+brake during startup logo
-                                     // Allows firmware flashing without physical disconnection
+#ifdef M365_DEFINE_GLOBALS
+  volatile uint8_t _NewDataFlag = 0; volatile bool _Hibernate = false;
+#else
+  extern volatile uint8_t _NewDataFlag; extern volatile bool _Hibernate;
+#endif
 
-// ============================================================================
-// COMMAND DEFINITIONS AND STRUCTURES
-// ============================================================================
-
-// Command enumeration for M365 scooter control
 enum {CMD_CRUISE_ON, CMD_CRUISE_OFF, CMD_LED_ON, CMD_LED_OFF, CMD_WEAK, CMD_MEDIUM, CMD_STRONG};
+struct __attribute__((packed)) CMD{ uint8_t len, addr, rlen, param; int16_t value; };
+#ifdef M365_DEFINE_GLOBALS
+  CMD _cmd = {0};
+#else
+  extern CMD _cmd;
+#endif
 
-// Structure for sending control commands to M365
-struct __attribute__((packed)) CMD{
-  uint8_t  len;                      // Length of command
-  uint8_t  addr;                     // Target address
-  uint8_t  rlen;                     // Response length expected
-  uint8_t  param;                    // Parameter to modify
-  int16_t  value;                    // Value to set
-}_cmd;
+#ifdef M365_DEFINE_GLOBALS
+  extern const uint8_t _commandsWeWillSend[3] = {1, 8, 10};
+#else
+  extern const uint8_t _commandsWeWillSend[3];
+#endif
 
-// Array of command indices that will be sent cyclically for data requests
-const uint8_t _commandsWeWillSend[] = {1, 8, 10}; // Indexes: 1=battery, 8=speed/mileage, 10=times
+#ifdef M365_DEFINE_GLOBALS
+  extern const uint8_t _q[15] PROGMEM = {0x3B, 0x31, 0x20, 0x1B, 0x10, 0x1A, 0x69, 0x3E, 0xB0, 0x23, 0x3A, 0x7B, 0x7C, 0x7D, 0x40};
+  extern const uint8_t _l[15] PROGMEM = {   2,   10,    6,    4,   18,   12,    2,    2,   32,    6,    4,    2,    2,    2,   30};
+  extern const uint8_t _f[15] PROGMEM = {   1,    1,    1,    1,    1,    2,    2,    2,    2,    2,    2,    2,    2,    2,    1};
+#else
+  extern const uint8_t _q[15] PROGMEM; extern const uint8_t _l[15] PROGMEM; extern const uint8_t _f[15] PROGMEM;
+#endif
 
-// Command lookup tables (stored in program memory to save RAM)
-        // INDEX                     0     1     2     3     4     5     6     7     8     9    10    11    12    13    14
-const uint8_t _q[] PROGMEM = {0x3B, 0x31, 0x20, 0x1B, 0x10, 0x1A, 0x69, 0x3E, 0xB0, 0x23, 0x3A, 0x7B, 0x7C, 0x7D, 0x40}; //commands
-const uint8_t _l[] PROGMEM = {   2,   10,    6,    4,   18,   12,    2,    2,   32,    6,    4,    2,    2,    2,   30}; //expected answer length
-const uint8_t _f[] PROGMEM = {   1,    1,    1,    1,    1,    2,    2,    2,    2,    2,    2,    2,    2,    2,    1}; //packet format type
+#ifdef M365_DEFINE_GLOBALS
+  extern const uint8_t _h0[2] PROGMEM = {0x55, 0xAA};
+  extern const uint8_t _h1[3] PROGMEM = {0x03, 0x22, 0x01};
+  extern const uint8_t _h2[3] PROGMEM = {0x06, 0x20, 0x61};
+  extern const uint8_t _hc[3] PROGMEM = {0x04, 0x20, 0x03};
+#else
+  extern const uint8_t _h0[2] PROGMEM; extern const uint8_t _h1[3] PROGMEM; extern const uint8_t _h2[3] PROGMEM; extern const uint8_t _hc[3] PROGMEM;
+#endif
 
-// ============================================================================
-// PROTOCOL PACKET HEADERS AND STRUCTURES
-// ============================================================================
+struct __attribute__ ((packed)) END20T_t{ uint8_t hz, th, br; };
+#ifdef M365_DEFINE_GLOBALS
+  END20T_t _end20t = {0,0,0};
+#else
+  extern END20T_t _end20t;
+#endif
 
-// Protocol packet headers (stored in program memory)
-const uint8_t _h0[]    PROGMEM = {0x55, 0xAA};     // Standard packet preamble
-const uint8_t _h1[]    PROGMEM = {0x03, 0x22, 0x01}; // Header type 1
-const uint8_t _h2[]    PROGMEM = {0x06, 0x20, 0x61}; // Header type 2
-const uint8_t _hc[]    PROGMEM = {0x04, 0x20, 0x03}; // Control command header
+#ifndef RECV_TIMEOUT
+#define RECV_TIMEOUT  5
+#endif
+#ifndef RECV_BUFLEN
+#define RECV_BUFLEN   64
+#endif
 
-// Dynamic packet ending structure for queries that include throttle/brake data
-struct __attribute__ ((packed)){ 
-  uint8_t hz;                        // Frequency/mode byte
-  uint8_t th;                        // Current throttle value
-  uint8_t br;                        // Current brake value
-}_end20t;
+struct __attribute__((packed)) ANSWER_HEADER{ uint8_t len, addr, hz, cmd; };
+#ifdef M365_DEFINE_GLOBALS
+  ANSWER_HEADER AnswerHeader = {0,0,0,0};
+#else
+  extern ANSWER_HEADER AnswerHeader;
+#endif
 
-// ============================================================================
-// COMMUNICATION PARAMETERS
-// ============================================================================
+struct __attribute__ ((packed)) S21C00HZ64_t { uint8_t state, ledBatt, headLamp, beepAction; };
+#ifdef M365_DEFINE_GLOBALS
+  S21C00HZ64_t S21C00HZ64 = {0,0,0,0};
+#else
+  extern S21C00HZ64_t S21C00HZ64;
+#endif
 
-const uint8_t RECV_TIMEOUT =  5;     // Receive timeout in milliseconds
-const uint8_t RECV_BUFLEN  = 64;     // Maximum receive buffer length
+struct __attribute__((packed)) A20C00HZ65 { uint8_t hz1, throttle, brake, hz2, hz3; };
+#ifdef M365_DEFINE_GLOBALS
+  A20C00HZ65 S20C00HZ65 = {0,0,0,0,0};
+#else
+  extern A20C00HZ65 S20C00HZ65;
+#endif
 
-// ============================================================================
-// DATA STRUCTURES FOR M365 RESPONSES
-// ============================================================================
+struct __attribute__((packed)) A25C31 { uint16_t remainCapacity; uint8_t remainPercent, u4; int16_t current, voltage; uint8_t temp1, temp2; };
+#ifdef M365_DEFINE_GLOBALS
+  A25C31 S25C31 = {0};
+#else
+  extern A25C31 S25C31;
+#endif
 
-// Header structure for incoming packets
-struct __attribute__((packed)) ANSWER_HEADER{
-  uint8_t len;                       // Packet length
-  uint8_t addr;                      // Source address
-  uint8_t hz;                        // Frequency/mode
-  uint8_t cmd;                       // Command ID
-} AnswerHeader;
+struct __attribute__((packed)) A25C40 { int16_t c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15; };
+#ifdef M365_DEFINE_GLOBALS
+  A25C40 S25C40 = {0};
+#else
+  extern A25C40 S25C40;
+#endif
 
-// ============================================================================
-// M365 SCOOTER DATA STRUCTURES
-// ============================================================================
+struct __attribute__((packed)) A23C3E { int16_t i1; };
+#ifdef M365_DEFINE_GLOBALS
+  A23C3E S23C3E = {0};
+#else
+  extern A23C3E S23C3E;
+#endif
 
-// BLE/Dashboard status data (Address 0x21, Command 0x00, Hz 0x64)
-struct __attribute__ ((packed)) {
-  uint8_t state;                     // 0=stall, 1=drive, 2=eco stall, 3=eco drive
-  uint8_t ledBatt;                   // Battery LED status: 0=min, 7/8=max
-  uint8_t headLamp;                  // Headlight: 0=off, 0x64=on
-  uint8_t beepAction;                // Beep/alarm actions
-} S21C00HZ64;
+struct __attribute__((packed)) A23CB0 { uint8_t u1[10]; int16_t speed; uint16_t averageSpeed; uint32_t mileageTotal; uint16_t mileageCurrent; uint16_t elapsedPowerOnTime; int16_t mainframeTemp; uint8_t u2[8]; };
+#ifdef M365_DEFINE_GLOBALS
+  A23CB0 S23CB0 = {{0},0,0,0,0,0,0,{0}};
+#else
+  extern A23CB0 S23CB0;
+#endif
 
-// Throttle and brake data (Address 0x20, Command 0x00, Hz 0x65)
-struct __attribute__((packed))A20C00HZ65 {
-  uint8_t hz1;                       // Unknown frequency byte
-  uint8_t throttle;                  // Throttle position (0-255)
-  uint8_t brake;                     // Brake lever position (0-255)
-  uint8_t hz2;                       // Unknown frequency byte
-  uint8_t hz3;                       // Unknown frequency byte
-} S20C00HZ65;
+struct __attribute__((packed)) A23C23 { uint8_t u1,u2,u3,u4; uint16_t remainMileage; };
+#ifdef M365_DEFINE_GLOBALS
+  A23C23 S23C23 = {0,0,0,0,0};
+#else
+  extern A23C23 S23C23;
+#endif
 
-// Battery data (Address 0x25, Command 0x31)
-struct __attribute__((packed))A25C31 {
-  uint16_t remainCapacity;           // Remaining capacity in mAh
-  uint8_t  remainPercent;            // Battery charge percentage
-  uint8_t  u4;                       // Battery status (unknown purpose)
-  int16_t  current;                  // Current in units/100 = Amperes
-  int16_t  voltage;                  // Voltage in units/100 = Volts
-  uint8_t  temp1;                    // Temperature 1 (subtract 20 for °C)
-  uint8_t  temp2;                    // Temperature 2 (subtract 20 for °C)
-} S25C31;
+struct __attribute__((packed)) A23C3A { uint16_t powerOnTime, ridingTime; };
+#ifdef M365_DEFINE_GLOBALS
+  A23C3A S23C3A = {0,0};
+#else
+  extern A23C3A S23C3A;
+#endif
 
-// Individual battery cells data (Address 0x25, Command 0x40)
-struct __attribute__((packed))A25C40 {
-  int16_t c1;  // Cell 1 voltage /1000 = Volts
-  int16_t c2;  // Cell 2 voltage
-  int16_t c3;  // Cell 3 voltage
-  int16_t c4;  // Cell 4 voltage
-  int16_t c5;  // Cell 5 voltage
-  int16_t c6;  // Cell 6 voltage
-  int16_t c7;  // Cell 7 voltage
-  int16_t c8;  // Cell 8 voltage
-  int16_t c9;  // Cell 9 voltage
-  int16_t c10; // Cell 10 voltage
-  int16_t c11; // Cell 11 voltage
-  int16_t c12; // Cell 12 voltage
-  int16_t c13; // Cell 13 voltage
-  int16_t c14; // Cell 14 voltage
-  int16_t c15; // Cell 15 voltage
-} S25C40;
-
-// Mainframe temperature (Address 0x23, Command 0x3E)
-struct __attribute__((packed))A23C3E {
-  int16_t i1;                        // Mainframe temperature
-} S23C3E;
-
-// Speed, mileage and system data (Address 0x23, Command 0xB0)
-struct __attribute__((packed))A23CB0 {
-  uint8_t u1[10];                    // Unknown data (32 bytes total)
-  int16_t  speed;                    // Current speed /1000 = km/h
-  uint16_t averageSpeed;             // Average speed /1000 = km/h
-  uint32_t mileageTotal;             // Total odometer /1000 = km
-  uint16_t mileageCurrent;           // Trip distance /100 = km
-  uint16_t elapsedPowerOnTime;       // Time since power on (seconds)
-  int16_t  mainframeTemp;            // Mainframe temperature /10 = °C
-  uint8_t u2[8];                     // Unknown data
-} S23CB0;
-
-// Remaining mileage estimate (Address 0x23, Command 0x23)
-struct __attribute__((packed))A23C23 {
-  uint8_t u1;                        // Unknown
-  uint8_t u2;                        // Unknown
-  uint8_t u3;                        // Usually 0x30
-  uint8_t u4;                        // Usually 0x09
-  uint16_t remainMileage;            // Estimated remaining range /100 = km
-} S23C23;
-
-// Time data (Address 0x23, Command 0x3A)
-struct __attribute__((packed))A23C3A {
-  uint16_t powerOnTime;              // Total power on time
-  uint16_t ridingTime;               // Current ride time in seconds
-} S23C3A;
+#endif // M365_DEFINES_H

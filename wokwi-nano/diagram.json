@@ -10,12 +10,27 @@
       "top": 31.94,
       "left": -18.97,
       "attrs": { "i2cAddress": "0x3c" }
-    }
+  },
+  { "type": "wokwi-slide-potentiometer", "id": "throttle", "top": 140, "left": -10, "attrs": { "sliderValue": "50" } },
+  { "type": "wokwi-slide-potentiometer", "id": "brake",    "top": 210, "left": 120, "attrs": { "sliderValue": "0" } },
+  { "type": "wokwi-slide-potentiometer", "id": "speed",    "top": 280, "left": -10, "attrs": { "sliderValue": "0" } },
+  { "type": "wokwi-slide-switch", "id": "stat", "top": 330, "left": 120, "attrs": { "label": "Stationary" } }
   ],
   "connections": [
     [ "nano:5V", "oled:VCC", "red", [ "v40", "h120" ] ],
     [ "nano:GND.1", "oled:GND", "black", [ "v24", "h120" ] ],
     [ "nano:A4", "oled:SDA", "green", [ "v16", "h120" ] ],
-    [ "nano:A5", "oled:SCL", "blue", [ "v8", "h120" ] ]
+  [ "nano:A5", "oled:SCL", "blue", [ "v8", "h120" ] ],
+  [ "throttle:VCC", "nano:5V", "red" ],
+  [ "throttle:GND", "nano:GND.2", "black" ],
+  [ "throttle:SIG", "nano:A0", "green" ],
+  [ "brake:VCC", "nano:5V", "red" ],
+  [ "brake:GND", "nano:GND.2", "black" ],
+  [ "brake:SIG", "nano:A1", "orange" ],
+  [ "speed:VCC", "nano:5V", "red" ],
+  [ "speed:GND", "nano:GND.2", "black" ],
+  [ "speed:SIG", "nano:A2", "purple" ],
+  [ "stat:2", "nano:D2", "gray" ],
+  [ "stat:1", "nano:GND.1", "black" ]
   ]
 }
