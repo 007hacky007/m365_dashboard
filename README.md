@@ -62,6 +62,20 @@ If you prefer using a current IDE instead of the old 1.6.6, this sketch builds f
 - Display
   - I2C works on ESP32’s default SDA/SCL (GPIO21/22 on many boards). If you wired differently, set pins before `Wire.begin()` or rewire to defaults.
 
+#### ESP32 WiFi AP + OTA update (optional)
+
+- Toggle via Settings menu on the OLED: open Settings (hold both brake and throttle), select “WiFi/OTA (ESP32)” and set “WiFi AP” to ON. The dashboard will start a WiFi hotspot and a tiny web server for firmware updates.
+- Credentials are shown in the WiFi submenu:
+  - SSID: M365-OTA-XXYY (based on device MAC)
+  - Password: m365ota123
+  - URL: http://192.168.4.1
+- Upload a new firmware:
+  - Connect to the hotspot, open http://192.168.4.1, click “Upload new firmware”, and select the ESP32 .bin built for this project (e.g., the CI artifact `M365.ino.bin`).
+  - After a successful upload the device reboots automatically.
+- Notes
+  - WiFi/OTA is available on ESP32 only. It’s disabled by default and persists in EEPROM when toggled.
+  - OTA expects a plain application image (the usual Arduino .bin). Full flash images are not accepted by the web form.
+
 ## Notes for common pitfalls
 
 - OLED type/address
@@ -143,6 +157,7 @@ Pick files from the artifact that matches your target:
   - M365.ino.bootloader.bin — bootloader (flash at 0x1000).
   - M365.ino.merged.bin — combined full image (flash at 0x0, if provided).
   - M365.ino.elf — symbols/debug only; not for flashing.
+  - OTA: use M365.ino.bin in the WiFi/OTA web page when updating via hotspot.
 
 ### Flashing ATmega328P from macOS
 

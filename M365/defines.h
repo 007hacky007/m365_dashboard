@@ -85,14 +85,22 @@ uint8_t bigMode = 1;                  // Big display mode: 0=speed, 1=current
 bool bigWarn = true;                  // Show full-screen battery warning
 bool hibernateOnBoot = false;         // One-time hibernation trigger on next boot
 bool showPower = true;                // Show power (W) instead of current (A)
+// ESP32-only: WiFi AP + OTA toggle (persisted). Ignored on AVR builds.
+#if defined(ARDUINO_ARCH_ESP32)
+bool wifiEnabled = false;             // Start WiFi AP and OTA server
+#else
+const bool wifiEnabled = false;       // Not supported on AVR
+#endif
 
 // Menu state variables
 bool Settings = false;                // True when in settings menu
 bool ShowBattInfo = false;            // True when showing battery details
 bool M365Settings = false;            // True when in M365 scooter settings
+bool WiFiSettings = false;            // ESP32: WiFi/OTA submenu active
 
 uint8_t menuPos = 0;                  // Current position in main settings menu
 uint8_t sMenuPos = 0;                 // Current position in M365 settings menu
+uint8_t wifiMenuPos = 0;              // ESP32: WiFi submenu position
 
 // M365 scooter configuration (stored in EEPROM)
 bool cfgCruise = false;                // Cruise control enabled
@@ -146,6 +154,9 @@ void(* resetFunc) (void) = 0;        // Function pointer for software reset
 // UART selection for M365 BUS
 #if defined(ARDUINO_ARCH_ESP32)
   #include <HardwareSerial.h>
+  #include <WiFi.h>
+  #include <WebServer.h>
+  #include <Update.h>
   #ifndef M365_UART_NUM
     #define M365_UART_NUM 1
   #endif

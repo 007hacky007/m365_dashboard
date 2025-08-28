@@ -27,6 +27,12 @@
   const char confScr7[] PROGMEM = {"Hibernate on boot: "};
   const char confScr9[] PROGMEM = {"Show unit (A/W): "};
   const char confScr8[] PROGMEM = {"Save and exit"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Back"};
  
   const char infoScr1[] PROGMEM = {"Total distance"};
   const char infoScr2[] PROGMEM = {"Power on time"};
@@ -83,6 +89,12 @@
   const char confScr7[] PROGMEM = {"Hibernation avvio: "};
   const char confScr9[] PROGMEM = {"Mostra unita (A/W): "};
   const char confScr8[] PROGMEM = {"Salva e esci"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Indietro"};
  
   const char infoScr1[] PROGMEM = {"Distance totale"};
   const char infoScr2[] PROGMEM = {"Tempo acceso"};
@@ -139,6 +151,12 @@
   const char confScr7[] PROGMEM = {"Hibernation demarr: "};
   const char confScr9[] PROGMEM = {"Unité (A/W): "};
   const char confScr8[] PROGMEM = {"Enregistrer et quitter"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Retour"};
 
   const char infoScr1[] PROGMEM = {"Distance Totale"};
   const char infoScr2[] PROGMEM = {"Allumée depuis :"};
@@ -195,6 +213,12 @@
   const char confScr7[] PROGMEM = {"Hibernar arranque: "};
   const char confScr9[] PROGMEM = {"Unidad (A/W): "};
   const char confScr8[] PROGMEM = {"Grabar y salir"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Atras"};
 
   const char infoScr1[] PROGMEM = {"Distancia total"};
   const char infoScr2[] PROGMEM = {"Tiempo encendido"};
@@ -251,6 +275,12 @@
   const char confScr7[] PROGMEM = {"Hibernace pri spust:"};
   const char confScr9[] PROGMEM = {"Jednotka vykonu (A/W):"};
   const char confScr8[] PROGMEM = {"Ulozit a odejit"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Zpet"};
 
   const char infoScr1[] PROGMEM = {"Celkova vzdalenost"};
   const char infoScr2[] PROGMEM = {"Cas od zapnuti"};
@@ -308,6 +338,12 @@
   const char confScr7[] PROGMEM = {"Hibernation Start: "};
   const char confScr9[] PROGMEM = {"Anzeigeeinheit (A/W): "};
   const char confScr8[] PROGMEM = {"Speichern und beenden"};
+  const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
+  const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
+  const char wifiMenu2[] PROGMEM = {"SSID:"};
+  const char wifiMenu3[] PROGMEM = {"PASS:"};
+  const char wifiMenu4[] PROGMEM = {"URL: http://"};
+  const char wifiMenu5[] PROGMEM = {"<- Zurück"};
  
   const char infoScr1[] PROGMEM = {"Total Entfernung"};
   const char infoScr2[] PROGMEM = {"Power on time"};

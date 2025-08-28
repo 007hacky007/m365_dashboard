@@ -20,6 +20,17 @@ static void simInit();
 static void simTick();
 #endif
 
+#if defined(ARDUINO_ARCH_ESP32)
+// ESP32 WiFi AP + OTA web update
+static WebServer otaServer(80);
+static bool otaRunning = false;
+static String otaSSID;
+static String otaPASS;
+static void otaBegin();
+static void otaEnd();
+static void otaService();
+#endif
+
 // ============================================================================
 // DISPLAY MANAGEMENT FUNCTIONS
 // ============================================================================
@@ -86,6 +97,9 @@ void setup() {
     cfgKERS = EEPROM.read(8);              // Regenerative braking setting
     hibernateOnBoot = EEPROM.read(9);      // One-time hibernation trigger
   showPower = EEPROM.read(10);           // Display power instead of current
+#if defined(ARDUINO_ARCH_ESP32)
+  wifiEnabled = EEPROM.read(11);         // WiFi/OTA toggle
+#endif
   } else {
     // First time setup - save default values to EEPROM
     EEPROM.put(0, 128);                    // Magic number to indicate valid config
@@ -99,6 +113,9 @@ void setup() {
     EEPROM.put(8, cfgKERS);
   EEPROM.put(9, hibernateOnBoot);
   EEPROM.put(10, showPower);
+#if defined(ARDUINO_ARCH_ESP32)
+  EEPROM.put(11, wifiEnabled);
+#endif
   EEPROM_COMMIT();
   }
 
@@ -212,6 +229,10 @@ void setup() {
   
   WDTcounts = 0;
   WatchDog::init(WDTint_, 500);           // 500ms watchdog interval
+
+#if defined(ARDUINO_ARCH_ESP32)
+  if (wifiEnabled) otaBegin();
+#endif
 }
 
 // ============================================================================
@@ -245,6 +266,10 @@ void loop() {
   // Process communication messages
   Message.Process();
   Message.ProcessBroadcast();
+
+#if defined(ARDUINO_ARCH_ESP32)
+  if (otaRunning) otaService();
+#endif
 
   // Reset watchdog counter to prevent system reset
   WDTcounts = 0;
@@ -917,8 +942,8 @@ void displayFSM() {
           return;
         }
 
-      if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1))                // brake min + throttle max = change menu value
-      switch (menuPos) {
+  if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1))                // brake min + throttle max = change menu value
+  switch (menuPos) {
         case 0:
           autoBig = !autoBig;
           break;
@@ -956,28 +981,66 @@ void displayFSM() {
           M365Settings = true;
           break;
         case 6:
-          showPower = !showPower;          // Toggle unit A/W
-          break;
-        case 7:
-          hibernateOnBoot = !hibernateOnBoot;
-          break;
-        case 8:
-          EEPROM.put(1, autoBig);
-          EEPROM.put(2, warnBatteryPercent);
-          EEPROM.put(3, bigMode);
-          EEPROM.put(4, bigWarn);
-          EEPROM.put(9, hibernateOnBoot);
-          EEPROM.put(10, showPower);
-          EEPROM_COMMIT();
-          Settings = false;
-          break;
+  {
+#if defined(ARDUINO_ARCH_ESP32)
+    WiFiSettings = true; wifiMenuPos = 0;
+    break;
+#else
+    showPower = !showPower;          // Toggle unit A/W
+    break;
+#endif
+  }
+  case 7:
+  {
+#if defined(ARDUINO_ARCH_ESP32)
+    showPower = !showPower;          // Toggle unit A/W
+    break;
+#else
+    hibernateOnBoot = !hibernateOnBoot;
+    break;
+#endif
+  }
+  case 8:
+  {
+#if defined(ARDUINO_ARCH_ESP32)
+    hibernateOnBoot = !hibernateOnBoot;
+    break;
+#else
+    EEPROM.put(1, autoBig);
+    EEPROM.put(2, warnBatteryPercent);
+    EEPROM.put(3, bigMode);
+    EEPROM.put(4, bigWarn);
+    EEPROM.put(9, hibernateOnBoot);
+    EEPROM.put(10, showPower);
+    EEPROM_COMMIT();
+    Settings = false;
+    break;
+#endif
+  }
+#if defined(ARDUINO_ARCH_ESP32)
+  case 9:
+    EEPROM.put(1, autoBig);
+    EEPROM.put(2, warnBatteryPercent);
+    EEPROM.put(3, bigMode);
+    EEPROM.put(4, bigWarn);
+    EEPROM.put(9, hibernateOnBoot);
+    EEPROM.put(10, showPower);
+    EEPROM.put(11, wifiEnabled);
+    EEPROM_COMMIT();
+    Settings = false;
+    break;
+#endif
       } else
       if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {               // brake max + throttle min = change menu position
-        if (menuPos < 8)
-          menuPos++;
-          else
-          menuPos = 0;
-        timer = millis() + LONG_PRESS;
+#if defined(ARDUINO_ARCH_ESP32)
+  if (menuPos < 9)
+#else
+  if (menuPos < 8)
+#endif
+    menuPos++;
+    else
+    menuPos = 0;
+  timer = millis() + LONG_PRESS;
       }
 
       displayClear(2);
@@ -1066,44 +1129,109 @@ void displayFSM() {
 
       display.print((const __FlashStringHelper *) confScr6);
 
-      display.setCursor(0, 6);
+  display.setCursor(0, 6);
+#if defined(ARDUINO_ARCH_ESP32)
+  if (menuPos == 6) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr10);
 
-      if (menuPos == 6)
-        display.print((char)0x7E);
-        else
-        display.print(" ");
+  display.setCursor(0, 7);
+  if (menuPos == 7) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr9);
+  if (showPower) display.print((const __FlashStringHelper *) l_w); else display.print((const __FlashStringHelper *) l_a);
 
-      display.print((const __FlashStringHelper *) confScr9);
-      if (showPower)
-        display.print((const __FlashStringHelper *) l_w);
-        else
-        display.print((const __FlashStringHelper *) l_a);
+  display.setCursor(0, 8);
+  if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr7);
+  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
 
-      display.setCursor(0, 7);
+  display.setCursor(0, 9);
+  if (menuPos == 9) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr8);
+#else
+  if (menuPos == 6) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr9);
+  if (showPower) display.print((const __FlashStringHelper *) l_w); else display.print((const __FlashStringHelper *) l_a);
 
-      if (menuPos == 7)
-        display.print((char)0x7E);
-        else
-        display.print(" ");
+  display.setCursor(0, 7);
+  if (menuPos == 7) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr7);
+  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
 
-      display.print((const __FlashStringHelper *) confScr7);
-      if (hibernateOnBoot)
-        display.print((const __FlashStringHelper *) l_Yes);
-        else
-        display.print((const __FlashStringHelper *) l_No);
-
-      display.setCursor(0, 8);
-
-      if (menuPos == 8)
-        display.print((char)0x7E);
-        else
-        display.print(" ");
-
-      display.print((const __FlashStringHelper *) confScr8);
+  display.setCursor(0, 8);
+  if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr8);
+#endif
 
       oldBrakeVal = brakeVal;
       oldThrottleVal = throttleVal;
  
+      // ESP32 WiFi/OTA submenu
+#if defined(ARDUINO_ARCH_ESP32)
+      if (WiFiSettings) {
+        // Navigate
+        if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {
+          if (wifiMenuPos < 4) wifiMenuPos++; else wifiMenuPos = 0;
+          timer = millis() + LONG_PRESS;
+        }
+        if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) {
+          switch (wifiMenuPos) {
+            case 0:
+              wifiEnabled = !wifiEnabled;
+              if (wifiEnabled) otaBegin(); else otaEnd();
+              EEPROM.put(11, wifiEnabled);
+              EEPROM_COMMIT();
+              break;
+            case 4:
+              WiFiSettings = false;
+              break;
+            default:
+              break;
+          }
+        }
+        // Ensure SSID/PASS are set (even if AP is off)
+        if (otaSSID.length() == 0) {
+          uint8_t mac[6];
+          WiFi.macAddress(mac);
+          char ssidBuf[24];
+          snprintf(ssidBuf, sizeof(ssidBuf), "M365-OTA-%02X%02X", mac[4], mac[5]);
+          otaSSID = ssidBuf;
+        }
+        if (otaPASS.length() == 0) otaPASS = "m365ota123";
+
+        // Draw WiFi submenu
+        displayClear(12);
+        display.set1X();
+        display.setCursor(0, 0);
+        display.print(wifiMenuPos == 0 ? (char)0x7E : ' ');
+        display.print((const __FlashStringHelper *) wifiMenu1);
+        display.print(wifiEnabled ? (const __FlashStringHelper *) l_On : (const __FlashStringHelper *) l_Off);
+
+        display.setCursor(0, 2);
+        display.print(wifiMenuPos == 1 ? (char)0x7E : ' ');
+        display.print((const __FlashStringHelper *) wifiMenu2);
+        display.print(' ');
+        display.print(otaSSID);
+
+        display.setCursor(0, 3);
+        display.print(wifiMenuPos == 2 ? (char)0x7E : ' ');
+        display.print((const __FlashStringHelper *) wifiMenu3);
+        display.print(' ');
+        display.print(otaPASS);
+
+        display.setCursor(0, 5);
+        display.print(wifiMenuPos == 3 ? (char)0x7E : ' ');
+        display.print((const __FlashStringHelper *) wifiMenu4);
+        display.print("192.168.4.1");
+
+        display.setCursor(0, 7);
+        display.print(wifiMenuPos == 4 ? (char)0x7E : ' ');
+        display.print((const __FlashStringHelper *) wifiMenu5);
+
+        oldBrakeVal = brakeVal;
+        oldThrottleVal = throttleVal;
+        return;
+      }
+#endif
       return;
     } else
     if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) {
@@ -1794,6 +1922,75 @@ uint16_t calcCs(uint8_t* data, uint8_t len) {
   for (uint8_t i = len; i > 0; i--) cs -= *data++; // Subtract each byte
   return cs;
 }
+
+#if defined(ARDUINO_ARCH_ESP32)
+// ========================= OTA WiFi AP helpers =========================
+static void otaRoutes() {
+  static const char indexHtml[] =
+    "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    "<title>M365 OTA</title></head><body><h2>M365 Dashboard OTA Update</h2>"
+    "<p>Build target: ESP32</p>"
+    "<p><a href=\"/update\">Upload new firmware</a></p>"
+    "</body></html>";
+  static const char updateHtml[] =
+    "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    "<title>Update</title></head><body><h2>Upload .bin</h2>"
+    "<form method=\"POST\" action=\"/update\" enctype=\"multipart/form-data\">"
+    "<input type=\"file\" name=\"update\"><input type=\"submit\" value=\"Upload\"></form>"
+    "</body></html>";
+
+  otaServer.on("/", HTTP_GET, [=]() { otaServer.send(200, "text/html", indexHtml); });
+  otaServer.on("/update", HTTP_GET, [=]() { otaServer.send(200, "text/html", updateHtml); });
+  otaServer.on("/update", HTTP_POST,
+    [](){
+      bool ok = !Update.hasError();
+      otaServer.send(200, "text/plain", ok ? "OK. Rebooting..." : "Update failed");
+      delay(500);
+      if (ok) ESP.restart();
+    },
+    [](){
+      HTTPUpload& upload = otaServer.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        Update.begin(UPDATE_SIZE_UNKNOWN);
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        Update.write(upload.buf, upload.currentSize);
+      } else if (upload.status == UPLOAD_FILE_END) {
+        Update.end(true);
+      }
+    }
+  );
+}
+
+static void otaBegin() {
+  if (otaRunning) return;
+  // Build SSID from MAC
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char ssidBuf[24];
+  snprintf(ssidBuf, sizeof(ssidBuf), "M365-OTA-%02X%02X", mac[4], mac[5]);
+  otaSSID = ssidBuf;
+  if (otaPASS.length() < 8) otaPASS = "m365ota123"; // 8+ chars
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(otaSSID.c_str(), otaPASS.c_str());
+  delay(100);
+  otaRoutes();
+  otaServer.begin();
+  otaRunning = true;
+}
+
+static void otaEnd() {
+  if (!otaRunning) return;
+  otaServer.stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_OFF);
+  otaRunning = false;
+}
+
+static void otaService() {
+  otaServer.handleClient();
+}
+#endif
 
 // ============================================================================
 // SIMULATOR: SYNTHETIC DATA FEEDER (Wokwi/dev runs)
