@@ -1388,9 +1388,6 @@ case 8:
           // Regen indicator moved to top-right corner; clear old spot
           display.setFont(defaultFont);
           display.set1X();
-          // Clear previous bottom-left 'R' if any
-          display.setCursor(54, 5);
-          display.print(' ');
           if (S25C31.current < 0) {
             // Place 'R' near the top-right without overlapping digits
             display.setCursor(120, 0);
