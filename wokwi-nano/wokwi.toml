@@ -2,8 +2,8 @@
 
 [wokwi]
 version = 1
-firmware = "../build/M365.ino.hex"   
-elf      = "../build/M365.ino.elf"   # optional but speeds things up
+firmware = "../build/ProMini-16MHz-SIM/M365.ino.hex"   
+elf      = "../build/ProMini-16MHz-SIM/M365.ino.elf"   # optional but speeds things up
 
 [arduino]
 fqbn = "arduino:avr:nano"
