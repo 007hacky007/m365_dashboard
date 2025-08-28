@@ -108,6 +108,7 @@ void setup() {
     cfgKERS = EEPROM.read(8);              // Regenerative braking setting
     hibernateOnBoot = EEPROM.read(9);      // One-time hibernation trigger
   showPower = EEPROM.read(10);           // Display power instead of current
+  showVoltageMain = EEPROM.read(12);     // Show voltage on main instead of speed
 #if defined(ARDUINO_ARCH_ESP32)
   wifiEnabled = EEPROM.read(11);         // WiFi/OTA toggle
 #endif
@@ -127,6 +128,7 @@ void setup() {
 #if defined(ARDUINO_ARCH_ESP32)
   EEPROM.put(11, wifiEnabled);
 #endif
+  EEPROM.put(12, showVoltageMain);
   EEPROM_COMMIT();
   }
 
@@ -663,7 +665,7 @@ void displayFSM() {
  
   // Split speed into integer and decimal parts
   m365_info.sph = (uint32_t) abs(_speed) / 1000L;   // Speed integer part
-  m365_info.spl = (uint16_t) c_speed % 1000 / 100;  // Speed decimal part
+  m365_info.spl = (uint16_t)(abs(_speed) % 1000L) / 100;  // Speed decimal part (uses wheel-compensated value)
   
   // ============================================================================
   // UNIT CONVERSION FOR US VERSION
@@ -1013,7 +1015,10 @@ void displayFSM() {
     break;
 #endif
   }
-  case 8:
+case 8:
+  showVoltageMain = !showVoltageMain;  // Toggle main page (speed/voltage)
+  break;
+  case 9:
   {
 #if defined(ARDUINO_ARCH_ESP32)
     hibernateOnBoot = !hibernateOnBoot;
@@ -1025,13 +1030,14 @@ void displayFSM() {
     EEPROM.put(4, bigWarn);
     EEPROM.put(9, hibernateOnBoot);
     EEPROM.put(10, showPower);
+    EEPROM.put(12, showVoltageMain);
     EEPROM_COMMIT();
     Settings = false;
     break;
 #endif
   }
 #if defined(ARDUINO_ARCH_ESP32)
-  case 9:
+  case 10:
     EEPROM.put(1, autoBig);
     EEPROM.put(2, warnBatteryPercent);
     EEPROM.put(3, bigMode);
@@ -1039,6 +1045,7 @@ void displayFSM() {
     EEPROM.put(9, hibernateOnBoot);
     EEPROM.put(10, showPower);
     EEPROM.put(11, wifiEnabled);
+    EEPROM.put(12, showVoltageMain);
     EEPROM_COMMIT();
     Settings = false;
     break;
@@ -1046,9 +1053,9 @@ void displayFSM() {
       } else
       if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {               // brake max + throttle min = change menu position
 #if defined(ARDUINO_ARCH_ESP32)
-  if (menuPos < 9)
+  if (menuPos < 10)
 #else
-  if (menuPos < 8)
+  if (menuPos < 9)
 #endif
     menuPos++;
     else
@@ -1154,11 +1161,16 @@ void displayFSM() {
 
   display.setCursor(0, 8);
   if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
-  display.print((const __FlashStringHelper *) confScr7);
-  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
+  display.print((const __FlashStringHelper *) confScr11);
+  if (showVoltageMain) display.print((const __FlashStringHelper *) confScr11b); else display.print((const __FlashStringHelper *) confScr11a);
 
   display.setCursor(0, 9);
   if (menuPos == 9) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr7);
+  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
+
+  display.setCursor(0, 10);
+  if (menuPos == 10) display.print((char)0x7E); else display.print(" ");
   display.print((const __FlashStringHelper *) confScr8);
 #else
   if (menuPos == 6) display.print((char)0x7E); else display.print(" ");
@@ -1167,11 +1179,16 @@ void displayFSM() {
 
   display.setCursor(0, 7);
   if (menuPos == 7) display.print((char)0x7E); else display.print(" ");
-  display.print((const __FlashStringHelper *) confScr7);
-  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
+  display.print((const __FlashStringHelper *) confScr11);
+  if (showVoltageMain) display.print((const __FlashStringHelper *) confScr11b); else display.print((const __FlashStringHelper *) confScr11a);
 
   display.setCursor(0, 8);
   if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
+  display.print((const __FlashStringHelper *) confScr7);
+  if (hibernateOnBoot) display.print((const __FlashStringHelper *) l_Yes); else display.print((const __FlashStringHelper *) l_No);
+
+  display.setCursor(0, 9);
+  if (menuPos == 9) display.print((char)0x7E); else display.print(" ");
   display.print((const __FlashStringHelper *) confScr8);
 #endif
 
@@ -1307,7 +1324,7 @@ void displayFSM() {
           display.setFont(bigNumb);
           if (showPower) {
             // Show power as 4 big digits in Watts, no decimals, no kW conversion
-            // Layout: [T] [H] [T] [O] using bigNumb at x = 2, 32, 62, 92
+            // Layout: [Th] [Hu] [Te] [On] using bigNumb at x = 2, 32, 62, 92
             // Values over 9999 are clamped
             {
               uint16_t W = m365_info.pwh; // integer watts
@@ -1331,12 +1348,16 @@ void displayFSM() {
               display.setCursor(92, 0);
               display.print(d_on);
 
-              // Clear any leftover dots/units from previous modes
+              // Clear any leftover dots/units from previous big speed/current modes
+              // Use bigNumb to clear big glyph positions; then small font for lower area
+              display.setFont(bigNumb);
+              // Clear potential dot/colon positions used by other big modes
+              display.setCursor(58, 0);  display.print((char)0x3B); // blank glyph
+              display.setCursor(106, 0); display.print((char)0x3B); // blank glyph
+              // Clear any small-font unit remnants in lower area
               display.setFont(defaultFont);
               display.set1X();
-              display.setCursor(58, 0); display.print(' '); // dot position cleanup
-              display.set2X();
-              display.setCursor(96, 4); display.print("   "); // old unit area cleanup
+              display.setCursor(96, 4); display.print("   ");
             }
           } else {
             // Show current (A)
@@ -1371,11 +1392,11 @@ void displayFSM() {
           display.print(' ');
           if (S25C31.current < 0) {
             // Place 'R' slightly to the right to avoid overlap with the 4th big digit
-            display.setCursor(121, 0);
+            display.setCursor(120, 0);
             display.print('R');
           } else {
             // Clear top-right 'R' when not regenerating
-            display.setCursor(121, 0);
+            display.setCursor(120, 0);
             display.print(' ');
           }
           display.set1X();
@@ -1422,14 +1443,27 @@ void displayFSM() {
         display.set1X();
         display.setFont(stdNumb);
         display.setCursor(0, 0);
-
-        if (m365_info.sph < 10) display.print(' ');
-        display.print(m365_info.sph);
-        display.print('.');
-        display.print(m365_info.spl);
-        display.setFont(defaultFont);
-        display.print((const __FlashStringHelper *) l_kmh);
-        display.setFont(stdNumb);
+        if (!showVoltageMain) {
+          if (m365_info.sph < 10) display.print(' ');
+          display.print(m365_info.sph);
+          display.print('.');
+          display.print(m365_info.spl);
+          display.setFont(defaultFont);
+          display.print((const __FlashStringHelper *) l_kmh);
+          display.setFont(stdNumb);
+        } else {
+          // Show battery voltage instead of speed
+          uint16_t vh = m365_info.vh;
+          uint16_t vl = m365_info.vl;
+          if (vh < 10) display.print(' ');
+          display.print(vh);
+          display.print('.');
+          if (vl < 10) display.print('0');
+          display.print(vl);
+          display.setFont(defaultFont);
+          display.print((const __FlashStringHelper *) l_v);
+          display.setFont(stdNumb);
+        }
 
         display.setCursor(95, 0);
 
@@ -1447,9 +1481,15 @@ void displayFSM() {
         display.print('.');
         if (m365_info.mill < 10) display.print('0');
         display.print(m365_info.mill);
-        display.setFont(defaultFont);
-        display.print((const __FlashStringHelper *) l_km);
-        display.setFont(stdNumb);
+        // Move the 'km' unit down to align with the numeric baseline
+        {
+          uint8_t __ux = display.col();
+          uint8_t __uy = display.row();
+          display.setFont(defaultFont);
+          display.setCursor(__ux, __uy + 1);
+          display.print((const __FlashStringHelper *) l_km);
+          display.setFont(stdNumb);
+        }
 
         display.setCursor(0, 4);
 
@@ -1459,7 +1499,12 @@ void displayFSM() {
         if (m365_info.Sec < 10) display.print('0');
         display.print(m365_info.Sec);
 
-        display.setCursor(68, 4);
+  // Clear the right-side numeric field (row 4) to avoid artifacts across mode switches
+  display.setFont(stdNumb);
+  display.setCursor(66, 4);
+  for (uint8_t i = 0; i < 16; i++) display.print(' ');
+  // Draw current/power freshly
+  display.setCursor(68, 4);
 
         if (!showPower) {
           if (m365_info.curh < 10) display.print(' ');
@@ -1467,16 +1512,30 @@ void displayFSM() {
           display.print('.');
           if (m365_info.curl < 10) display.print('0');
           display.print(m365_info.curl);
-          display.setFont(defaultFont);
-          display.print((const __FlashStringHelper *) l_a);
+          // Move the 'A' unit down to align with the numeric baseline
+          {
+            uint8_t __ux = display.col();
+            uint8_t __uy = display.row();
+            display.setFont(defaultFont);
+            display.setCursor(__ux, __uy + 1);
+            display.print((const __FlashStringHelper *) l_a);
+            display.setFont(stdNumb);
+          }
         } else {
           if (m365_info.pwh < 10) display.print(' ');
           display.print(m365_info.pwh);
           display.print('.');
           if (m365_info.pwl < 10) display.print('0');
           display.print(m365_info.pwl);
-          display.setFont(defaultFont);
-          display.print((const __FlashStringHelper *) l_w);
+          // Move the 'W' unit down to align with the numeric baseline
+          {
+            uint8_t __ux = display.col();
+            uint8_t __uy = display.row();
+            display.setFont(defaultFont);
+            display.setCursor(__ux, __uy + 1);
+            display.print((const __FlashStringHelper *) l_w);
+            display.setFont(stdNumb);
+          }
         }
       }
 

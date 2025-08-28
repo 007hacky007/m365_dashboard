@@ -85,6 +85,7 @@ uint8_t bigMode = 1;                  // Big display mode: 0=speed, 1=current
 bool bigWarn = true;                  // Show full-screen battery warning
 bool hibernateOnBoot = false;         // One-time hibernation trigger on next boot
 bool showPower = true;                // Show power (W) instead of current (A)
+bool showVoltageMain = true;         // Show battery voltage instead of speed on main page
 // ESP32-only: WiFi AP + OTA toggle (persisted). Ignored on AVR builds.
 #if defined(ARDUINO_ARCH_ESP32)
 bool wifiEnabled = false;             // Start WiFi AP and OTA server

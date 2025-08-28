@@ -25,6 +25,9 @@
   const char confScr5[] PROGMEM = {"Battery info"};
   const char confScr6[] PROGMEM = {"Configure M365"};
   const char confScr7[] PROGMEM = {"Hibernate on boot: "};
+  const char confScr11[] PROGMEM = {"Main shows:       "};
+  const char confScr11a[] PROGMEM = {" SPEED"};
+  const char confScr11b[] PROGMEM = {"   VOLT"};
   const char confScr9[] PROGMEM = {"Show unit (A/W): "};
   const char confScr8[] PROGMEM = {"Save and exit"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
@@ -87,6 +90,9 @@
   const char confScr5[] PROGMEM = {"Info Batteria"};
   const char confScr6[] PROGMEM = {"Configura M365"};
   const char confScr7[] PROGMEM = {"Hibernation avvio: "};
+  const char confScr11[] PROGMEM = {"Schermata:       "};
+  const char confScr11a[] PROGMEM = {" VEL"};
+  const char confScr11b[] PROGMEM = {" VOLT"};
   const char confScr9[] PROGMEM = {"Mostra unita (A/W): "};
   const char confScr8[] PROGMEM = {"Salva e esci"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
@@ -149,6 +155,9 @@
   const char confScr5[] PROGMEM = {"Informations batterie"};
   const char confScr6[] PROGMEM = {"Configure M365"};
   const char confScr7[] PROGMEM = {"Hibernation demarr: "};
+  const char confScr11[] PROGMEM = {"Ecran:          "};
+  const char confScr11a[] PROGMEM = {" VITES"};
+  const char confScr11b[] PROGMEM = {"  VOLT"};
   const char confScr9[] PROGMEM = {"Unité (A/W): "};
   const char confScr8[] PROGMEM = {"Enregistrer et quitter"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
@@ -211,6 +220,9 @@
   const char confScr5[] PROGMEM = {"Informacion "};
   const char confScr6[] PROGMEM = {"Configurar M365"};
   const char confScr7[] PROGMEM = {"Hibernar arranque: "};
+  const char confScr11[] PROGMEM = {"Pantalla:       "};
+  const char confScr11a[] PROGMEM = {"  VELO"};
+  const char confScr11b[] PROGMEM = {"  VOLT"};
   const char confScr9[] PROGMEM = {"Unidad (A/W): "};
   const char confScr8[] PROGMEM = {"Grabar y salir"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
@@ -273,6 +285,9 @@
   const char confScr5[] PROGMEM = {"Info o baterii >"};
   const char confScr6[] PROGMEM = {"Nastaveni M365 >"};
   const char confScr7[] PROGMEM = {"Hibernace pri spust:"};
+  const char confScr11[] PROGMEM = {"Hlavni zobrazi:  "};
+  const char confScr11a[] PROGMEM = {" RYCHL"};
+  const char confScr11b[] PROGMEM = {"  NAP"};
   const char confScr9[] PROGMEM = {"Jednotka vykonu (A/W):"};
   const char confScr8[] PROGMEM = {"Ulozit a odejit"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
@@ -336,6 +351,9 @@
   const char confScr5[] PROGMEM = {"Batterie Info"};
   const char confScr6[] PROGMEM = {"M365 Konfigurieren"};
   const char confScr7[] PROGMEM = {"Hibernation Start: "};
+  const char confScr11[] PROGMEM = {"Hauptanzeige:   "};
+  const char confScr11a[] PROGMEM = {"  TACH"};
+  const char confScr11b[] PROGMEM = {"  VOLT"};
   const char confScr9[] PROGMEM = {"Anzeigeeinheit (A/W): "};
   const char confScr8[] PROGMEM = {"Speichern und beenden"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
