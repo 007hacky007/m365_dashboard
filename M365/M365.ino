@@ -14,6 +14,10 @@
 
 #include "defines.h"
 
+#if defined(ARDUINO_ARCH_AVR) && defined(SIM_MODE)
+#include <avr/wdt.h>
+#endif
+
 // Optional simulator for Wokwi/desktop runs: feeds synthetic scooter data
 #ifdef SIM_MODE
 static void simInit();
@@ -75,6 +79,13 @@ void WDTint_() {
 void setup() {
   // Initialize serial communication with M365 scooter at 115200 baud
   SERIAL_BEGIN(115200);
+
+#if defined(ARDUINO_ARCH_AVR) && defined(SIM_MODE)
+  // In Wokwi/Nano simulation, disable hardware WDT if previously enabled
+  // to avoid unexpected resets during simulated long operations.
+  MCUSR = 0;
+  wdt_disable();
+#endif
 
   // ============================================================================
   // LOAD SETTINGS FROM EEPROM
@@ -228,7 +239,9 @@ void setup() {
   // ============================================================================
   
   WDTcounts = 0;
-  WatchDog::init(WDTint_, 500);           // 500ms watchdog interval
+  #if !(defined(ARDUINO_ARCH_AVR) && defined(SIM_MODE))
+    WatchDog::init(WDTint_, 500);           // 500ms watchdog interval
+  #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
   if (wifiEnabled) otaBegin();
