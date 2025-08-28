@@ -68,11 +68,11 @@ bool displayClear(byte ID = 1, bool force = false);
 #ifdef M365_DEFINE_GLOBALS
   uint8_t warnBatteryPercent = 5;
   bool autoBig = true;
-  uint8_t bigMode = 0;
+  uint8_t bigMode = 1;
   bool bigWarn = true;
   bool hibernateOnBoot = false;
   bool showPower = true;
-  bool showVoltageMain = false;
+  bool showVoltageMain = true;
 #else
   extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode;
   extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
@@ -94,6 +94,34 @@ bool displayClear(byte ID = 1, bool force = false);
 #else
   extern bool Settings, ShowBattInfo, M365Settings, WiFiSettings;
   extern uint8_t menuPos, sMenuPos, wifiMenuPos;
+#endif
+
+// UI alternate screens and per-trip metrics (since power on)
+#ifdef M365_DEFINE_GLOBALS
+  uint8_t uiAltScreen = 0; // 0=main, 1=trip stats, 2=odometer
+  uint32_t tripEnergy_Wh_x100 = 0; // hundredths of Wh
+  uint32_t lastPowerOnTime_s = 0;
+  uint16_t tripMaxCurrent_cA = 0; // centi-amps
+  uint32_t tripMaxPower_Wx100 = 0; // W*100
+  uint16_t tripMinVoltage_cV = 0xFFFF; // centi-volts
+  uint16_t tripMaxVoltage_cV = 0;     // centi-volts
+#else
+  extern uint8_t uiAltScreen;
+  extern uint32_t tripEnergy_Wh_x100;
+  extern uint32_t lastPowerOnTime_s;
+  extern uint16_t tripMaxCurrent_cA;
+  extern uint32_t tripMaxPower_Wx100;
+  extern uint16_t tripMinVoltage_cV;
+  extern uint16_t tripMaxVoltage_cV;
+#endif
+
+// Brake hold detection state (for cycling screens)
+#ifdef M365_DEFINE_GLOBALS
+  bool brakeHoldArmed = false;
+  bool brakeHoldLatched = false;
+#else
+  extern bool brakeHoldArmed;
+  extern bool brakeHoldLatched;
 #endif
 
 #ifdef M365_DEFINE_GLOBALS

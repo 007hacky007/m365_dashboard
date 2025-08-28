@@ -42,12 +42,59 @@ void displayFSM() {
 
   if ((m365_info.sph > 1) && Settings) { ShowBattInfo = false; M365Settings = false; Settings = false; }
 
+  // Update per-trip aggregates (since power-on)
+  {
+    // Track energy: power (W) = current(A) * voltage(V). We have centi-units for I and V.
+    // Compute W*100 from m365_info.pwh/pwl => integer watts and fractional 0-99.
+    uint32_t P_Wx100 = (uint32_t)m365_info.pwh * 100UL + (uint32_t)m365_info.pwl;
+    // Integrate energy in Wh*100 using elapsed seconds since last sample of powerOnTime
+    uint32_t pot_s = S23C3A.powerOnTime; // seconds
+    // Detect wrap or reset (e.g. after power cycle)
+    if (lastPowerOnTime_s == 0 || pot_s < lastPowerOnTime_s) {
+      lastPowerOnTime_s = pot_s;
+      // Reset per-trip metrics when starting fresh
+      tripEnergy_Wh_x100 = 0;
+      tripMaxCurrent_cA = 0; tripMaxPower_Wx100 = 0;
+      tripMinVoltage_cV = 0xFFFF; tripMaxVoltage_cV = 0;
+    }
+    uint32_t dt = (pot_s >= lastPowerOnTime_s) ? (pot_s - lastPowerOnTime_s) : 0;
+    if (dt > 0) {
+  // Wh = W * h; Wh*100 = (W*100) * (dt/3600)
+  tripEnergy_Wh_x100 += (P_Wx100 * dt) / 3600UL;
+      lastPowerOnTime_s = pot_s;
+    }
+
+    // Track max current and power (absolute discharge only)
+    uint16_t cur_cA = (uint16_t)abs(S25C31.current); // centi-amps
+    if (cur_cA > tripMaxCurrent_cA) tripMaxCurrent_cA = cur_cA;
+    uint32_t Pw_x100 = P_Wx100; // already W*100
+    if (Pw_x100 > tripMaxPower_Wx100) tripMaxPower_Wx100 = Pw_x100;
+
+    // Track min/max voltage
+    uint16_t v_cV = (uint16_t)abs(S25C31.voltage);
+    if (v_cV < tripMinVoltage_cV) tripMinVoltage_cV = v_cV;
+    if (v_cV > tripMaxVoltage_cV) tripMaxVoltage_cV = v_cV;
+  }
+
   if ((c_speed <= 200) || Settings) {
     if (S20C00HZ65.brake > 60) brakeVal = 1; else if (S20C00HZ65.brake < 50) brakeVal = -1; else brakeVal = 0;
     if (S20C00HZ65.throttle > 150) throttleVal = 1; else if (S20C00HZ65.throttle < 50) throttleVal = -1; else throttleVal = 0;
 
     if (((brakeVal == 1) && (throttleVal == 1) && !Settings) && ((oldBrakeVal != 1) || (oldThrottleVal != 1))) {
+      uiAltScreen = 0; // ensure we return to main after exiting settings
       menuPos = 0; timer = millis() + LONG_PRESS; Settings = true;
+      displayClear(2, true); // force clear when entering settings
+    }
+
+    // Handle screen cycling by brake when stationary (speed=0)
+    // Edge on brake press only when throttle neutral and not in any modal screen
+    if (!Settings && !M365Settings && !ShowBattInfo) {
+      bool stationary = (c_speed <= 200); // same threshold as elsewhere
+      if (stationary && (brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) {
+        // Cycle: 0 -> 1 -> 2 -> 0
+        uiAltScreen = (uiAltScreen + 1) % 3;
+        timer = millis() + LONG_PRESS;
+      }
     }
 
     if (M365Settings) {
@@ -63,8 +110,8 @@ void displayFSM() {
         case 7: oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; timer = millis() + LONG_PRESS; M365Settings = false; break;
       } else if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) { if (sMenuPos < 7) sMenuPos++; else sMenuPos = 0; timer = millis() + LONG_PRESS; }
 
-      if (displayClear(7)) sMenuPos = 0;
-      display.set1X(); display.setCursor(0, 0);
+  if (displayClear(7)) sMenuPos = 0;
+  display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
       if (sMenuPos == 0) display.print((char)0x7E); else display.print(" ");
       display.print((const __FlashStringHelper *) M365CfgScr1);
       display.print(cfgCruise ? (const __FlashStringHelper *) l_On : (const __FlashStringHelper *) l_Off);
@@ -164,8 +211,8 @@ void displayFSM() {
         }
         if (otaPASS.length() == 0) otaPASS = "m365ota123";
 
-        displayClear(12);
-        display.set1X(); display.setCursor(0, 0);
+  displayClear(12);
+  display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
         display.print(wifiMenuPos == 0 ? (char)0x7E : ' ');
         display.print((const __FlashStringHelper *) wifiMenu1);
         display.print(wifiEnabled ? (const __FlashStringHelper *) l_On : (const __FlashStringHelper *) l_Off);
@@ -191,8 +238,8 @@ void displayFSM() {
 #endif
 
       // Windowed rendering: only 8 visible lines, scroll as menuPos changes
-      displayClear(2);
-      display.set1X();
+  displayClear(2);
+  display.set1X(); display.setFont(defaultFont);
       // Determine total items depending on platform
       uint8_t totalItems =
 #if defined(ARDUINO_ARCH_ESP32)
@@ -249,23 +296,7 @@ void displayFSM() {
   oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; return;
 
   return;
-    } else if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) {
-      displayClear(3);
-      display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
-      display.print((const __FlashStringHelper *) infoScr1); display.print(':');
-      display.setFont(stdNumb); display.setCursor(15, 1);
-      tmp_0 = S23CB0.mileageTotal / 1000; tmp_1 = (S23CB0.mileageTotal % 1000) / 10;
-      if (tmp_0 < 1000) display.print(' '); if (tmp_0 < 100) display.print(' '); if (tmp_0 < 10) display.print(' ');
-      display.print(tmp_0); display.print('.'); if (tmp_1 < 10) display.print('0'); display.print(tmp_1);
-      display.setFont(defaultFont); display.print((const __FlashStringHelper *) l_km);
-
-      display.setCursor(0, 5); display.print((const __FlashStringHelper *) infoScr2); display.print(':');
-      display.setFont(stdNumb); display.setCursor(15, 6);
-      tmp_0 = S23C3A.powerOnTime / 60; tmp_1 = S23C3A.powerOnTime % 60;
-      if (tmp_0 < 100) display.print(' '); if (tmp_0 < 10) display.print(' ');
-      display.print(tmp_0); display.print(':'); if (tmp_1 < 10) display.print('0'); display.print(tmp_1);
-      return;
-    }
+  }
 
     oldBrakeVal = brakeVal; oldThrottleVal = throttleVal;
   }
@@ -318,6 +349,77 @@ void displayFSM() {
     if ((S25C31.current < -100) && (c_speed <= 200)) {
       fsBattInfo();
     } else {
+      // Decide which alt screen to render
+      uint8_t screenToShow = uiAltScreen; // 0 main, 1 trip stats, 2 odometer
+      if (screenToShow == 2) {
+        // Odometer/power-on time screen (original triggered by throttle)
+        displayClear(3);
+        display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
+        display.print((const __FlashStringHelper *) infoScr1); display.print(':');
+        display.setFont(stdNumb); display.setCursor(15, 1);
+        tmp_0 = S23CB0.mileageTotal / 1000; tmp_1 = (S23CB0.mileageTotal % 1000) / 10;
+        if (tmp_0 < 1000) display.print(' '); if (tmp_0 < 100) display.print(' '); if (tmp_0 < 10) display.print(' ');
+        display.print(tmp_0); display.print('.'); if (tmp_1 < 10) display.print('0'); display.print(tmp_1);
+        display.setFont(defaultFont); display.print((const __FlashStringHelper *) l_km);
+
+        display.setCursor(0, 5); display.print((const __FlashStringHelper *) infoScr2); display.print(':');
+        display.setFont(stdNumb); display.setCursor(15, 6);
+        tmp_0 = S23C3A.powerOnTime / 60; tmp_1 = S23C3A.powerOnTime % 60;
+        if (tmp_0 < 100) display.print(' '); if (tmp_0 < 10) display.print(' ');
+        display.print(tmp_0); display.print(':'); if (tmp_1 < 10) display.print('0'); display.print(tmp_1);
+        return;
+      } else if (screenToShow == 1) {
+        // Trip stats: Avg Wh/km, Max A/W, Umin and Umax (separate lines)
+        displayClear(6);
+        display.set1X(); display.setFont(defaultFont);
+        // mileageCurrent is km*100 (0.01 km units)
+        uint32_t mCurr = S23CB0.mileageCurrent; // km*100
+        // Compute average Wh/km *100: if distance>0
+        uint16_t avg_whkm_x100 = 0;
+        if (mCurr > 0) {
+          uint32_t dist_km_x100 = mCurr;
+          // avg_x100 = (Wh*100 * 100) / (km*100) = (Wh*100) / (km)
+          uint32_t avg_u32 = (tripEnergy_Wh_x100 * 100UL) / dist_km_x100;
+          if (avg_u32 > 65535UL) avg_u32 = 65535UL;
+          avg_whkm_x100 = (uint16_t)avg_u32;
+        }
+        // Line 0: label and value on the same row
+        display.setFont(defaultFont); display.setCursor(0, 0); display.print((const __FlashStringHelper *) statsAvgWhKm); display.print(':');
+        display.setFont(defaultFont); display.setCursor(64, 0);
+        uint16_t av_i = avg_whkm_x100 / 100; uint16_t av_f = avg_whkm_x100 % 100;
+        if (av_i < 100) display.print(' '); if (av_i < 10) display.print(' ');
+        display.print(av_i); display.print('.'); if (av_f < 10) display.print('0'); display.print(av_f); display.print(' '); display.print(F("Wh/km"));
+
+        // Line 2: Max current or power on same row
+        display.setFont(defaultFont); display.setCursor(0, 2);
+        if (!showPower) { display.print((const __FlashStringHelper *) statsMaxA); display.print(' '); display.setCursor(64, 2);
+          uint16_t c_i = tripMaxCurrent_cA / 100; uint16_t c_f = tripMaxCurrent_cA % 100;
+          if (c_i < 100) display.print(' '); if (c_i < 10) display.print(' ');
+          display.print(c_i); display.print('.'); if (c_f < 10) display.print('0'); display.print(c_f); display.print(' '); display.print((const __FlashStringHelper *) l_a);
+        } else { display.print((const __FlashStringHelper *) statsMaxW); display.print(' '); display.setCursor(64, 2);
+          uint32_t w100 = tripMaxPower_Wx100; uint16_t w_i = w100 / 100; uint16_t w_f = w100 % 100;
+          // fit in 4 digits + . + 2
+          if (w_i < 1000) display.print(' '); if (w_i < 100) display.print(' '); if (w_i < 10) display.print(' ');
+          display.print(w_i); display.print('.'); if (w_f < 10) display.print('0'); display.print(w_f); display.print(' '); display.print((const __FlashStringHelper *) l_w);
+        }
+
+        // Line 4: Umin on its own line
+        display.setFont(defaultFont); display.setCursor(0, 4); display.print((const __FlashStringHelper *) statsUmin); display.print(' ');
+        display.setCursor(64, 4);
+        uint16_t vmin_i = (tripMinVoltage_cV == 0xFFFF) ? 0 : (tripMinVoltage_cV / 100);
+        uint16_t vmin_f = (tripMinVoltage_cV == 0xFFFF) ? 0 : (tripMinVoltage_cV % 100);
+        if (vmin_i < 10) display.print(' ');
+        display.print(vmin_i); display.print('.'); if (vmin_f < 10) display.print('0'); display.print(vmin_f); display.print(' '); display.print((const __FlashStringHelper *) l_v);
+
+        // Line 6: Umax on its own line
+        display.setFont(defaultFont); display.setCursor(0, 6); display.print((const __FlashStringHelper *) statsUmax); display.print(' ');
+        display.setCursor(64, 6);
+        uint16_t vmax_i = tripMaxVoltage_cV / 100; uint16_t vmax_f = tripMaxVoltage_cV % 100;
+        if (vmax_i < 10) display.print(' ');
+        display.print(vmax_i); display.print('.'); if (vmax_f < 10) display.print('0'); display.print(vmax_f); display.print(' '); display.print((const __FlashStringHelper *) l_v);
+        return;
+      }
+
       displayClear(0);
       m365_info.milh = S23CB0.mileageCurrent / 100;
       m365_info.mill = S23CB0.mileageCurrent % 100;

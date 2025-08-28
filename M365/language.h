@@ -31,11 +31,11 @@
   const char confScr5[] PROGMEM = {"Battery info"};
   const char confScr6[] PROGMEM = {"Configure M365"};
   const char confScr7[] PROGMEM = {"Hibernate on boot: "};
-  const char confScr11[] PROGMEM = {"Main shows:       "};
-  const char confScr11a[] PROGMEM = {" SPEED"};
-  const char confScr11b[] PROGMEM = {"   VOLT"};
+  const char confScr11[] PROGMEM = {"Main shows: "};
+  const char confScr11a[] PROGMEM = {" SPEED    "};
+  const char confScr11b[] PROGMEM = {" VOLT     "};
   const char confScr9[] PROGMEM = {"Show unit (A/W): "};
-  const char confScr8[] PROGMEM = {"Save and exit"};
+  const char confScr8[] PROGMEM = {"Save and exit     "};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
@@ -47,6 +47,14 @@
   const char infoScr2[] PROGMEM = {"Power on time"};
  
   const char battScr[] PROGMEM = {">>> Brake to exit <<<"};
+
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Avg Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
  
   const char M365CfgScr1[] PROGMEM = {"Cruise control: "};
   const char M365CfgScr2[] PROGMEM = {"Update Cruise"};
@@ -112,6 +120,14 @@
   const char infoScr2[] PROGMEM = {"Tempo acceso"};
  
   const char battScr[] PROGMEM = {">>> Freno per uscire <<<"};
+
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Media Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
  
   const char M365CfgScr1[] PROGMEM = {"Cruise control: "};
   const char M365CfgScr2[] PROGMEM = {"Agg. Cruise"};
@@ -178,6 +194,14 @@
 
   const char battScr[] PROGMEM = {">>> Freiner pour sortir <<<"};
 
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Moy Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
+
   const char M365CfgScr1[] PROGMEM = {"Contrôle régulateur: "};
   const char M365CfgScr2[] PROGMEM = {"MAJ Régulateur"};
   const char M365CfgScr3[] PROGMEM = {"Allumer feu arrière:    "};
@@ -243,6 +267,14 @@
 
   const char battScr[] PROGMEM = {">>> Freno para salir <<<"};
 
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Med Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
+
   const char M365CfgScr1[] PROGMEM = {"Control crucero: "};
   const char M365CfgScr2[] PROGMEM = {"Actualizar crucero"};
   const char M365CfgScr3[] PROGMEM = {"Luz trasera:    "};
@@ -307,6 +339,14 @@
   const char infoScr2[] PROGMEM = {"Cas od zapnuti"};
 
   const char battScr[] PROGMEM = {">>>  Brzdou zpet  <<<"};
+
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Prum Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
 
   const char M365CfgScr1[] PROGMEM = {"Tempomat:        "};
   const char M365CfgScr2[] PROGMEM = {"Uloz nast. tempomatu"};
@@ -378,6 +418,14 @@
   const char infoScr2[] PROGMEM = {"Power on time"};
  
   const char battScr[] PROGMEM = {"> Bremsen zum verlassen <"};
+
+  // Trip stats screen
+  const char statsAvgWhKm[] PROGMEM = {"Durchs Wh/km"};
+  const char statsMaxA[] PROGMEM = {"Max A:"};
+  const char statsMaxW[] PROGMEM = {"Max W:"};
+  const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
+  const char statsUmin[] PROGMEM = {"Umin:"};
+  const char statsUmax[] PROGMEM = {"Umax:"};
  
   const char M365CfgScr1[] PROGMEM = {"Cruise control: "};
   const char M365CfgScr2[] PROGMEM = {"Update Cruise"};
