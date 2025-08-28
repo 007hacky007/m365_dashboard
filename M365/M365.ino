@@ -159,6 +159,7 @@ void setup() {
 
 #ifdef SIM_MODE
   // Initialize simulated telemetry values before first frame
+  SERIAL_BEGIN(115200); // open USB serial for SIM control input
   simInit();
 #endif
 

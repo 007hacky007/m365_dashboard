@@ -68,11 +68,11 @@ bool displayClear(byte ID = 1, bool force = false);
 #ifdef M365_DEFINE_GLOBALS
   uint8_t warnBatteryPercent = 5;
   bool autoBig = true;
-  uint8_t bigMode = 1;
+  uint8_t bigMode = 0;
   bool bigWarn = true;
   bool hibernateOnBoot = false;
   bool showPower = true;
-  bool showVoltageMain = true;
+  bool showVoltageMain = false;
 #else
   extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode;
   extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
@@ -155,6 +155,43 @@ bool displayClear(byte ID = 1, bool force = false);
 #else
   #define XIAOMI_PORT Serial
   #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud))
+#endif
+
+// SIM analog inputs (for Wokwi pots)
+#if defined(SIM_MODE)
+  // Expose SIM stationary flag for UI/debug
+  #ifdef M365_DEFINE_GLOBALS
+    volatile bool gSimStationary = false;
+  #else
+    extern volatile bool gSimStationary;
+  #endif
+  #if defined(ARDUINO_ARCH_ESP32)
+    #ifndef SIM_THROTTLE_PIN
+  #define SIM_THROTTLE_PIN 36 // SVP
+    #endif
+    #ifndef SIM_BRAKE_PIN
+  #define SIM_BRAKE_PIN    39 // SVN
+    #endif
+    #ifndef SIM_SPEED_PIN
+      #define SIM_SPEED_PIN    34 // ADC1 CH6
+    #endif
+    #ifndef SIM_STATIONARY_PIN
+      #define SIM_STATIONARY_PIN 32 // GPIO32, digital input with internal pull-up
+    #endif
+  #else
+    #ifndef SIM_THROTTLE_PIN
+      #define SIM_THROTTLE_PIN A0
+    #endif
+    #ifndef SIM_BRAKE_PIN
+      #define SIM_BRAKE_PIN    A1
+    #endif
+    #ifndef SIM_SPEED_PIN
+      #define SIM_SPEED_PIN    A2
+    #endif
+    #ifndef SIM_STATIONARY_PIN
+      #define SIM_STATIONARY_PIN 2 // D2, digital input with internal pull-up
+    #endif
+  #endif
 #endif
 
 #if defined(UCSR0B) && defined(RXEN0)

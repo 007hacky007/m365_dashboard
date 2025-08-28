@@ -106,9 +106,11 @@ void displayFSM() {
       if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) { oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; timer = millis() + LONG_PRESS; ShowBattInfo = false; return; }
       fsBattInfo(); display.setCursor(0, 7); display.print((const __FlashStringHelper *) battScr); oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; return;
     } else if (Settings) {
-      if ((brakeVal == 1) && (oldBrakeVal == 1) && (throttleVal == -1) && (oldThrottleVal == -1) && (timer != 0)) if (millis() > timer) { Settings = false; return; }
+  // Disable long-press auto-exit from Settings to avoid unintended exits
+  // (Use explicit Save/Exit menu item instead)
 
-      if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) switch (menuPos) {
+      // Apply action on throttle press when brake is released (neutral or below)
+      if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal <= 0) && (oldBrakeVal <= 0)) switch (menuPos) {
         case 0: autoBig = !autoBig; break;
         case 1: bigMode = (bigMode == 1) ? 0 : 1; break;
         case 2: switch (warnBatteryPercent) { case 0: warnBatteryPercent = 5; break; case 5: warnBatteryPercent = 10; break; case 10: warnBatteryPercent = 15; break; default: warnBatteryPercent = 0; } break;
@@ -137,7 +139,7 @@ void displayFSM() {
 #if defined(ARDUINO_ARCH_ESP32)
         case 10: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(11, wifiEnabled); EEPROM.put(12, showVoltageMain); EEPROM_COMMIT(); Settings = false; break;
 #endif
-      } else if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) {
+      } else if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) {
 #if defined(ARDUINO_ARCH_ESP32)
         if (menuPos < 10)
 #else
@@ -146,82 +148,11 @@ void displayFSM() {
           menuPos++; else menuPos = 0; timer = millis() + LONG_PRESS;
       }
 
-      displayClear(2);
-      display.set1X(); display.setCursor(0, 0);
-      if (menuPos == 0) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr1);
-      display.print(autoBig ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No);
-
-      display.setCursor(0, 1);
-      if (menuPos == 1) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr2);
-      switch (bigMode) { case 1: display.print((const __FlashStringHelper *) confScr2b); break; default: display.print((const __FlashStringHelper *) confScr2a); }
-
-      display.setCursor(0, 2);
-      if (menuPos == 2) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr3);
-      switch (warnBatteryPercent) { case 5: display.print(" 5%"); break; case 10: display.print("10%"); break; case 15: display.print("15%"); break; default: display.print((const __FlashStringHelper *) l_Off); break; }
-
-      display.setCursor(0, 3);
-      if (menuPos == 3) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr4);
-      display.print(bigWarn ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No);
-
-      display.setCursor(0, 4);
-      if (menuPos == 4) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr5);
-
-      display.setCursor(0, 5);
-      if (menuPos == 5) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr6);
-
-      display.setCursor(0, 6);
 #if defined(ARDUINO_ARCH_ESP32)
-      if (menuPos == 6) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr10);
-
-      display.setCursor(0, 7);
-      if (menuPos == 7) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr9);
-      display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a);
-
-      display.setCursor(0, 8);
-      if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr11);
-      display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a);
-
-      display.setCursor(0, 9);
-      if (menuPos == 9) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr7);
-      display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No);
-
-      display.setCursor(0, 10);
-      if (menuPos == 10) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr8);
-#else
-      if (menuPos == 6) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr9);
-      display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a);
-
-      display.setCursor(0, 7);
-      if (menuPos == 7) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr11);
-      display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a);
-
-      display.setCursor(0, 8);
-      if (menuPos == 8) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr7);
-      display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No);
-
-      display.setCursor(0, 9);
-      if (menuPos == 9) display.print((char)0x7E); else display.print(" ");
-      display.print((const __FlashStringHelper *) confScr8);
-#endif
-
-#if defined(ARDUINO_ARCH_ESP32)
+      // WiFi settings sub-menu takes over rendering when active
       if (WiFiSettings) {
-        if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal == -1) && (oldThrottleVal == -1)) { if (wifiMenuPos < 4) wifiMenuPos++; else wifiMenuPos = 0; timer = millis() + LONG_PRESS; }
-        if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) {
+        if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) { if (wifiMenuPos < 4) wifiMenuPos++; else wifiMenuPos = 0; timer = millis() + LONG_PRESS; }
+        if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal <= 0) && (oldBrakeVal <= 0)) {
           switch (wifiMenuPos) {
             case 0: wifiEnabled = !wifiEnabled; if (wifiEnabled) otaBegin(); else otaEnd(); EEPROM.put(11, wifiEnabled); EEPROM_COMMIT(); break;
             case 4: WiFiSettings = false; break;
@@ -258,7 +189,66 @@ void displayFSM() {
         oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; return;
       }
 #endif
-      return;
+
+      // Windowed rendering: only 8 visible lines, scroll as menuPos changes
+      displayClear(2);
+      display.set1X();
+      // Determine total items depending on platform
+      uint8_t totalItems =
+#if defined(ARDUINO_ARCH_ESP32)
+  11; // indices 0..10
+#else
+  10; // indices 0..9
+#endif
+      // Compute top index so selection stays within window
+      uint8_t top = 0;
+      if (menuPos > 3) {
+  uint8_t maxTop = (totalItems > 8) ? (totalItems - 8) : 0;
+  uint8_t desired = menuPos - 3;
+  top = (desired > maxTop) ? maxTop : desired;
+      }
+
+      // Helper lambda to draw one item at a given row
+      auto drawItem = [&](uint8_t idx, uint8_t row){
+  display.setCursor(0, row);
+  if (menuPos == idx) display.print((char)0x7E); else display.print(' ');
+  switch (idx) {
+    case 0: display.print((const __FlashStringHelper *) confScr1);
+      display.print(autoBig ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+    case 1: display.print((const __FlashStringHelper *) confScr2);
+      switch (bigMode) { case 1: display.print((const __FlashStringHelper *) confScr2b); break; default: display.print((const __FlashStringHelper *) confScr2a); } break;
+    case 2: display.print((const __FlashStringHelper *) confScr3);
+      switch (warnBatteryPercent) { case 5: display.print(" 5%"); break; case 10: display.print("10%"); break; case 15: display.print("15%" ); break; default: display.print((const __FlashStringHelper *) l_Off); } break;
+    case 3: display.print((const __FlashStringHelper *) confScr4);
+      display.print(bigWarn ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+    case 4: display.print((const __FlashStringHelper *) confScr5); break;
+    case 5: display.print((const __FlashStringHelper *) confScr6); break;
+#if defined(ARDUINO_ARCH_ESP32)
+    case 6: display.print((const __FlashStringHelper *) confScr10); break;
+    case 7: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
+    case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
+    case 9: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+    case 10: display.print((const __FlashStringHelper *) confScr8); break;
+#else
+          case 6: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
+          case 7: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
+          case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
+          case 9: display.print((const __FlashStringHelper *) confScr8); break;
+#endif
+    default: break;
+  }
+      };
+
+  for (uint8_t line = 0; line < 8; ++line) {
+  uint8_t idx = top + line;
+  if (idx >= totalItems) break;
+  drawItem(idx, line);
+      }
+
+  // Latch current input states for edge detection on next frame
+  oldBrakeVal = brakeVal; oldThrottleVal = throttleVal; return;
+
+  return;
     } else if ((throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal == -1) && (oldBrakeVal == -1)) {
       displayClear(3);
       display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
