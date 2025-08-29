@@ -1,4 +1,5 @@
 #include "battery_display.h"
+#include "range_estimator.h"
 
 void showBatt(int percent, bool blinkIt) {
   display.set1X();
@@ -28,6 +29,28 @@ void showBatt(int percent, bool blinkIt) {
       display.print(' ');
     }
   }
+}
+
+void showRangeSmall() {
+  // Print remaining km as small label on last row, right-aligned
+  float km = rangeGetEstimateKm();
+  if (km < 0) km = 0;
+  // Format with one decimal, cap to 999.9 for layout
+  if (km > 999.9f) km = 999.9f;
+  uint16_t i = (uint16_t)km;
+  uint16_t f = (uint16_t)((km - (float)i) * 10.0f + 0.5f);
+  display.set1X(); display.setFont(defaultFont);
+  // Reserve roughly 8 chars: "123.4km"
+  const uint8_t colStart = 86; // near right edge but before battery %
+  display.setCursor(colStart, 6);
+  // Clear area
+  for (uint8_t c = 0; c < 12; ++c) display.print(' ');
+  display.setCursor(colStart, 6);
+  if (i < 100) display.print(' ');
+  if (i < 10) display.print(' ');
+  display.print(i);
+  display.print('.'); display.print(f);
+  display.print((const __FlashStringHelper *) l_km);
 }
 
 void fsBattInfo() {

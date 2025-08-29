@@ -344,7 +344,8 @@ void displayFSM() {
         display.setCursor(106, 0); display.print((char)0x3A);
   display.setFont(defaultFont); display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
     }
-    showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showRangeSmall();
   } else {
     if ((S25C31.current < -100) && (c_speed <= 200)) {
       fsBattInfo();
@@ -464,6 +465,7 @@ void displayFSM() {
   display.print(d); uint8_t endCol = display.col(); { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_w); display.setFont(stdNumb); }
       }
     }
-    showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showRangeSmall();
   }
 }

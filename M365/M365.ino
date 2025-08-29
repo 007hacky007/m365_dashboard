@@ -18,6 +18,7 @@
 #include "battery_display.h"
 #include "comms.h"
 #include "display_fsm.h"
+#include "range_estimator.h"
 #ifdef SIM_MODE
 #include "sim.h"
 #endif
@@ -98,8 +99,12 @@ void setup() {
   // LOAD SETTINGS FROM EEPROM
   // ============================================================================
   
-  // Prepare EEPROM (ESP32 needs begin/commit)
+  // Prepare EEPROM (ESP32 needs begin/commit). We need extra space for range ring (~64 + 13*10 = 194 bytes). Round up.
+#if defined(ARDUINO_ARCH_ESP32)
+  EEPROM.begin(256);
+#else
   EEPROM_START(64);
+#endif
 
   // Check if valid configuration exists (magic number 128)
   uint8_t cfgID = EEPROM.read(0);
@@ -146,6 +151,8 @@ void setup() {
   // ============================================================================
   
   oledInit(false); // Centralized OLED init (no splash/logo here)
+  // Initialize range estimator after EEPROM is ready and before loop
+  rangeInit();
   
   // Optional: Invert display for better visibility on yellow/blue OLEDs
   // display.displayRemap(true);
@@ -205,6 +212,8 @@ void setup() {
     display.print("Hibernation");
     display.setCursor(0, 1);
     display.print("mode enabled");
+  // Orderly shutdown: persist learned range if changed
+  rangeCheckpointIfNeeded();
   }
 #endif // SIM_MODE  // end hibernation detection (skipped in SIM)
 
@@ -304,6 +313,8 @@ void loop() {
 
   // Update display according to current state and inputs
   displayFSM();
+  // Update range learner regularly
+  rangeTick();
 
   // Service OLED (I2C recovery / yield)
   oledService();

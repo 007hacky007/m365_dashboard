@@ -63,24 +63,6 @@ void simTick() {
   if ((int32_t)(now - last) < 100) return;
   last = now;
 
-  // Tiny serial command parser for SIM control:
-  //  Tnnn -> set throttle (0-200), Bnnn -> set brake (0-200)
-  //  M0/1 -> manual off/on,  A -> auto (manual off), R -> reset anim state
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == 'T') {
-      int v = Serial.parseInt(); if (v < 0) v = 0; if (v > 255) v = 255; simThrottle = (uint8_t)v; simManual = true;
-    } else if (c == 'B') {
-      int v = Serial.parseInt(); if (v < 0) v = 0; if (v > 255) v = 255; simBrake = (uint8_t)v; simManual = true;
-    } else if (c == 'M') {
-      int v = Serial.parseInt(); simManual = (v != 0);
-    } else if (c == 'A') {
-      simManual = false;
-    } else if (c == 'R') {
-      // no persistent state yet; could extend to reset timers in future
-    }
-  }
-
   uint16_t phase = (now / 50) % 200;
   uint16_t up = (phase <= 100) ? phase : (200 - phase);
   int16_t speed_mmpkh = (int16_t)(up * 250);
