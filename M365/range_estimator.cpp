@@ -9,17 +9,12 @@
 
 // We also use S23CB0.averageSpeed? Not needed; we use instant speed from S23CB0.speed.
 
-// Constants
-// Initial km_per_pct recommendation
-// - User pack: 280 Wh (stock) + 504 Wh (extra) = 784 Wh. If you expect ~35 km per full charge, that's ~0.35 km/%.
-//   This is a conservative starting point and the learner will converge based on your riding.
-// - Stock-only reference: if you expect ~20 km per 280 Wh pack, that's ~0.20 km/%. Keep as a commented baseline.
-static const float KM_PER_PCT_INIT = 0.35f;        // user pack (~784 Wh): ~35 km full => 0.35 km/%
-// static const float KM_PER_PCT_INIT_STOCK_280WH = 0.20f; // stock-only reference (~20 km full)
-static const float KM_PER_PCT_MIN  = 0.05f;
-static const float KM_PER_PCT_MAX  = 0.60f;
-static const float EMA_ALPHA       = 0.10f;        // normal learning
-static const float EOD_BETA        = 0.30f;        // end-of-discharge stronger correction weight
+// Constants from central config
+static const float KM_PER_PCT_INIT = RANGE_KM_PER_PCT_INIT;
+static const float KM_PER_PCT_MIN  = RANGE_KM_PER_PCT_MIN;
+static const float KM_PER_PCT_MAX  = RANGE_KM_PER_PCT_MAX;
+static const float EMA_ALPHA       = RANGE_EMA_ALPHA; // normal learning
+static const float EOD_BETA        = RANGE_EOD_BETA;  // end-of-discharge stronger correction weight
 
 // Checkpoint policy
 static const uint8_t RING_SLOTS    = 10;

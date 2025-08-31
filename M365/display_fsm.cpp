@@ -28,12 +28,13 @@ void displayFSM() {
 #ifdef US_Version
   m365_info.sph = m365_info.sph/1.609; m365_info.spl = m365_info.spl/1.609;
 #endif
-  m365_info.curh = abs(S25C31.current) / 100;
-  m365_info.curl = abs(S25C31.current) % 100;
+  int16_t cur_cA_raw = totalCurrent_cA();
+  m365_info.curh = abs(cur_cA_raw) / 100;
+  m365_info.curl = abs(cur_cA_raw) % 100;
   m365_info.vh = abs(S25C31.voltage) / 100;
   m365_info.vl = abs(S25C31.voltage) % 100;
   {
-    uint32_t ai = (uint32_t)abs(S25C31.current);
+    uint32_t ai = (uint32_t)abs(cur_cA_raw);
     uint32_t vi = (uint32_t)abs(S25C31.voltage);
     uint32_t m = (ai * vi + 50) / 100;
     m365_info.pwh = (uint16_t)(m / 100);
@@ -65,7 +66,7 @@ void displayFSM() {
     }
 
     // Track max current and power (absolute discharge only)
-    uint16_t cur_cA = (uint16_t)abs(S25C31.current); // centi-amps
+  uint16_t cur_cA = (uint16_t)abs(cur_cA_raw); // centi-amps (scaled total)
     if (cur_cA > tripMaxCurrent_cA) tripMaxCurrent_cA = cur_cA;
     uint32_t Pw_x100 = P_Wx100; // already W*100
     if (Pw_x100 > tripMaxPower_Wx100) tripMaxPower_Wx100 = Pw_x100;
@@ -303,7 +304,7 @@ void displayFSM() {
       case 1:
     // Select font per setting: STD = bigNumb @ 1X, DIGIT = segNumb @ 2X
     if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
-        if (showPower) {
+  if (showPower) {
           uint16_t W = m365_info.pwh; if (W > 9999) W = 9999;
           char buf[5]; buf[0] = (W >= 1000) ? char('0' + (W / 1000) % 10) : ' ';
           buf[1] = (W >= 100)  ? char('0' + (W / 100) % 10)  : ' ';
@@ -320,18 +321,18 @@ void displayFSM() {
           uint8_t ux = display.col(); if (ux > 112) ux = 112;
           uint8_t yUnit = (bigFontStyle == 0) ? 4 : 4;
           display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
-        } else {
+  } else {
           tmp_0 = m365_info.curh / 10; tmp_1 = m365_info.curh % 10;
           display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print(bigFontStyle == 1 ? (char)0x3B : ' ');
           display.setCursor(32, 0); display.print(tmp_1);
           tmp_0 = m365_info.curl / 10; tmp_1 = m365_info.curl % 10;
           display.setCursor(75, 0); display.print(tmp_0);
           display.setCursor(108, 0); if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); } display.print(tmp_1); display.setFont(defaultFont);
-          if ((S25C31.current >= 0) || ((S25C31.current < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, (bigFontStyle == 0) ? 3 : 4); display.print((const __FlashStringHelper *) l_a); }
+          if ((cur_cA_raw >= 0) || ((cur_cA_raw < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, (bigFontStyle == 0) ? 3 : 4); display.print((const __FlashStringHelper *) l_a); }
           display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
         }
         display.setFont(defaultFont); display.set1X();
-        if (S25C31.current < 0) { display.setCursor(120, 0); display.print('R'); } else { display.setCursor(120, 0); display.print(' '); }
+  if (cur_cA_raw < 0) { display.setCursor(120, 0); display.print('R'); } else { display.setCursor(120, 0); display.print(' '); }
         display.set1X(); display.setCursor(64, 5);
         break;
       default:
@@ -344,10 +345,10 @@ void displayFSM() {
         display.setCursor(106, 0); display.print((char)0x3A);
   display.setFont(defaultFont); display.set1X(); display.setCursor(64, 5); display.print((char)0x85);
     }
-  showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showBatt(S25C31.remainPercent, cur_cA_raw < 0);
   showRangeSmall();
   } else {
-    if ((S25C31.current < -100) && (c_speed <= 200)) {
+  if ((cur_cA_raw < -100) && (c_speed <= 200)) {
       fsBattInfo();
     } else {
       // Decide which alt screen to render
@@ -449,7 +450,7 @@ void displayFSM() {
       display.setCursor(0, 4);
       if (m365_info.Min < 10) display.print('0'); display.print(m365_info.Min); display.print(':'); if (m365_info.Sec < 10) display.print('0'); display.print(m365_info.Sec);
   display.setFont(stdNumb);
-      if (!showPower) {
+  if (!showPower) {
         display.setCursor(60, 4);
         uint8_t startCol = display.col(); if (m365_info.curh < 10) display.print(' '); display.print(m365_info.curh); display.print('.'); if (m365_info.curl < 10) display.print('0'); display.print(m365_info.curl);
         uint8_t endCol = display.col(); uint8_t printed = endCol - startCol; for (uint8_t k = printed; k < 7; k++) display.print(' ');
@@ -465,7 +466,7 @@ void displayFSM() {
   display.print(d); uint8_t endCol = display.col(); { uint8_t __ux = endCol; uint8_t __uy = display.row(); display.setFont(defaultFont); display.setCursor(__ux, __uy + 1); display.print((const __FlashStringHelper *) l_w); display.setFont(stdNumb); }
       }
     }
-  showBatt(S25C31.remainPercent, S25C31.current < 0);
+  showBatt(S25C31.remainPercent, cur_cA_raw < 0);
   showRangeSmall();
   }
-}
+      }

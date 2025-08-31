@@ -3,6 +3,7 @@
 #define M365_DEFINES_H
 
 #include <Arduino.h>
+#include "config.h"  // central user configuration
 #if defined(ARDUINO_ARCH_AVR)
   #include <avr/pgmspace.h>
 #else
@@ -34,9 +35,7 @@
   #include <Wire.h>
   #include "SSD1306AsciiWire.h"
   // Default SSD1306 I2C address
-  #ifndef OLED_I2C_ADDRESS
-  #define OLED_I2C_ADDRESS 0x3C
-  #endif
+  // Address comes from config.h (OLED_I2C_ADDRESS)
 #endif
 
 // Fonts
@@ -69,14 +68,14 @@ bool displayClear(byte ID = 1, bool force = false);
 #define LONG_PRESS 2000
 
 #ifdef M365_DEFINE_GLOBALS
-  uint8_t warnBatteryPercent = 5;
-  bool autoBig = true;
-  uint8_t bigMode = 1;
-  uint8_t bigFontStyle = 1; // 0=STD, 1=DIGIT
-  bool bigWarn = true;
-  bool hibernateOnBoot = false;
-  bool showPower = true;
-  bool showVoltageMain = true;
+  uint8_t warnBatteryPercent = CFG_WARN_BATTERY_PERCENT_DEFAULT;
+  bool autoBig = CFG_AUTOBIG_DEFAULT;
+  uint8_t bigMode = CFG_BIGMODE_DEFAULT;
+  uint8_t bigFontStyle = CFG_BIGFONTSTYLE_DEFAULT; // 0=STD, 1=DIGIT
+  bool bigWarn = CFG_BIGWARN_DEFAULT;
+  bool hibernateOnBoot = CFG_HIBERNATE_ON_BOOT_DEFAULT;
+  bool showPower = CFG_SHOW_POWER_DEFAULT;
+  bool showVoltageMain = CFG_SHOW_VOLTAGE_MAIN_DEFAULT;
 #else
   extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode; extern uint8_t bigFontStyle;
   extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
@@ -161,6 +160,19 @@ bool displayClear(byte ID = 1, bool force = false);
 #else
   extern bool WheelSize; extern uint8_t WDTcounts; extern void(* resetFunc) (void);
 #endif
+
+// Battery parallel pack configuration
+// One pack is monitored via BMS telemetry (10s3p, default 7800 mAh). Another pack in parallel (default 10s4p, 14000 mAh).
+// Total current drawn from both packs ≈ reported_current * ((PACK1_mAh + PACK2_mAh)/PACK1_mAh).
+// Adjust these to match your setup, or set PACK2_MAH to 0 to disable scaling.
+#ifndef PACK1_MAH
+#define PACK1_MAH 7800u
+#endif
+#ifndef PACK2_MAH
+#define PACK2_MAH 14000u
+#endif
+
+// Note: totalCurrent_cA() is defined after S25C31 declaration below
 
 // Comm defs
 #if defined(ARDUINO_ARCH_ESP32)
@@ -327,6 +339,16 @@ struct __attribute__((packed)) A25C31 { uint16_t remainCapacity; uint8_t remainP
 #else
   extern A25C31 S25C31;
 #endif
+
+// Helper to get total current (centi-amps) scaled to both packs
+static inline int16_t totalCurrent_cA() {
+  // If no extra pack, return raw current
+  if (PACK2_MAH == 0) return S25C31.current;
+  const float scale = ((float)PACK1_MAH + (float)PACK2_MAH) / (float)PACK1_MAH;
+  float sc = (float)S25C31.current * scale;
+  if (sc > 32767.0f) sc = 32767.0f; if (sc < -32768.0f) sc = -32768.0f;
+  return (int16_t)sc;
+}
 
 struct __attribute__((packed)) A25C40 { int16_t c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15; };
 #ifdef M365_DEFINE_GLOBALS

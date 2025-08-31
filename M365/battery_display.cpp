@@ -70,8 +70,9 @@ void fsBattInfo() {
   display.print(' ');
 
   if (!showPower) {
-    tmp_0 = abs(S25C31.current) / 100;
-    tmp_1 = abs(S25C31.current) % 100;
+    int16_t cur_cA = totalCurrent_cA();
+    tmp_0 = abs(cur_cA) / 100;
+    tmp_1 = abs(cur_cA) % 100;
     if (tmp_0 < 10) display.print(' ');
     display.print(tmp_0);
     display.print('.');
@@ -79,7 +80,7 @@ void fsBattInfo() {
     display.print(tmp_1);
     display.print((const __FlashStringHelper *) l_a);
   } else {
-    uint32_t ai = (uint32_t)abs(S25C31.current);
+  uint32_t ai = (uint32_t)abs(totalCurrent_cA());
     uint32_t vi = (uint32_t)abs(S25C31.voltage);
     uint32_t m = (ai * vi + 50) / 100; // centi-watts
     tmp_0 = (int16_t)(m / 100);
