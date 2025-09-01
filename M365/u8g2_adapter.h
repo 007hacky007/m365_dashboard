@@ -89,6 +89,9 @@ public:
   void drawRBox(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t r) { u8g2.drawRBox(x, y, w, h, r); }
   void drawRFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t r) { u8g2.drawRFrame(x, y, w, h, r); }
   void drawVLine(uint8_t x, uint8_t y, uint8_t h) { u8g2.drawVLine(x, y, h); }
+  void drawDisc(uint8_t x, uint8_t y, uint8_t r) { u8g2.drawDisc(x, y, r); }
+  void drawTriangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) { u8g2.drawTriangle(x0, y0, x1, y1, x2, y2); }
+  void setDrawColor(uint8_t c) { u8g2.setDrawColor(c); }
 
   // Push current buffer to the display (call once per frame)
   void commit() { u8g2.sendBuffer(); }

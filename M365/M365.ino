@@ -165,16 +165,47 @@ void setup() {
   // Optional: Invert display for better visibility on yellow/blue OLEDs
   // display.displayRemap(true);
   
-  // Show M365 logo/text briefly during startup
+  // Show startup splash
   displayClear(255, true);
 #if defined(ARDUINO_ARCH_ESP32)
-  display.setFont(stdNumb);
-  display.setCursor(0, 2);
-  display.print("M365");
-  display.setFont(defaultFont);
-  display.setCursor(0, 4);
-  display.print("Dashboard");
-  displayCommit();
+  // Pacman animation (~2.2s): Pacman moves left->right eating dots with mouth animation
+  {
+    uint32_t tEnd = millis() + 2200;
+    const uint8_t yMid = 32; // vertical center
+    const uint8_t rPac = 10; // pacman radius
+    const uint8_t dotR = 2;  // dot radius
+    const uint8_t startX = 6; const uint8_t endX = 122; // keep within 128
+    uint8_t x = startX;
+    while ((int32_t)(millis() - tEnd) < 0) {
+      display.clear();
+      // Draw dots ahead of Pacman every 12px
+      for (uint8_t dx = startX + 20; dx <= endX; dx += 12) {
+        if (dx > x + rPac + 2) {
+          display.drawDisc(dx, yMid, dotR);
+        }
+      }
+
+      // Pacman body
+      display.drawDisc(x, yMid, rPac);
+      // Mouth animation: open/close using a triangle subtraction (draw color 0 to clear)
+      uint8_t phase = (uint8_t)((millis() / 120) % 4); // 0..3
+      uint8_t mouth = (phase == 1 || phase == 2) ? 6 : 2; // wider for phases 1-2, narrow for 0,3
+      // Draw mouth wedge to the right
+      display.setDrawColor(0);
+      display.drawTriangle(x, yMid, x + rPac + 1, yMid - mouth, x + rPac + 1, yMid + mouth);
+      display.setDrawColor(1);
+
+      // Eye
+      display.drawDisc(x - 3, yMid - 5, 1);
+
+      // Commit frame
+      displayCommit();
+
+      // Advance position
+      if (x < endX) x += 4; // speed
+      delay(30);
+    }
+  }
 #else
   display.setFont(m365);
   display.setCursor(0, 0);
@@ -202,7 +233,7 @@ void setup() {
     EEPROM_COMMIT();
   }
   
-  // Also check for manual hibernation trigger during logo display (2 second window)
+  // Also check for manual hibernation trigger during splash window (2 second window)
   uint32_t hibernationWindow = millis() + 2000;
   
   while (millis() < hibernationWindow && !hibernationDetected) {
