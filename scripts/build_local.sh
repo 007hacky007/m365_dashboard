@@ -19,6 +19,20 @@ BUILD_DIR="${ROOT}/build-local"
 SKETCH_DIR="${ROOT}/M365"
 # SIM=1 enables simulator variants; default off unless env is set
 SIM=${SIM:-1}
+# OTA toggle: when OTA=1, use a dual-app partition scheme (minimal SPIFFS) to allow OTA updates.
+# When OTA=0, use huge_app to maximize single-app size (no OTA possible).
+OTA=${OTA:-1}
+ESP32_FLASH_SIZE=${ESP32_FLASH_SIZE:-4M}
+# Choose scheme based on OTA flag unless explicitly overridden
+if [[ -z "${ESP32_PARTITION_SCHEME:-}" ]]; then
+  if [[ "${OTA}" == "1" ]]; then
+    # OTA-capable with minimal filesystem footprint
+    ESP32_PARTITION_SCHEME=min_spiffs
+  else
+    # Max single app size, no OTA
+    ESP32_PARTITION_SCHEME=huge_app
+  fi
+fi
 
 ADDITIONAL_URL="https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
 
@@ -74,12 +88,12 @@ add_target() {
 
 add_target "ProMini-16MHz"     "arduino:avr:pro:cpu=16MHzatmega328" ""
 add_target "ProMini-8MHz"       "arduino:avr:pro:cpu=8MHzatmega328"  ""
-add_target "ESP32-Dev"          "esp32:esp32:esp32"                   ""
+add_target "ESP32-Dev"          "esp32:esp32:esp32:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"                   ""
 
 if [[ "${SIM:-0}" == "1" ]]; then
   add_target "ProMini-16MHz-SIM" "arduino:avr:pro:cpu=16MHzatmega328" "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
   add_target "ProMini-8MHz-SIM"   "arduino:avr:pro:cpu=8MHzatmega328"  "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
-  add_target "ESP32-Dev-SIM"      "esp32:esp32:esp32"                  "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
+  add_target "ESP32-Dev-SIM"      "esp32:esp32:esp32:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"                  "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
 fi
 
 # Filter targets via TARGETS env if provided
