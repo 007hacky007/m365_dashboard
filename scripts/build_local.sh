@@ -88,12 +88,13 @@ add_target() {
 
 add_target "ProMini-16MHz"     "arduino:avr:pro:cpu=16MHzatmega328" ""
 add_target "ProMini-8MHz"       "arduino:avr:pro:cpu=8MHzatmega328"  ""
-add_target "ESP32-Dev"          "esp32:esp32:esp32:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"                   ""
+# ESP32-C3 (RISC-V) devkit target
+add_target "ESP32-C3-Dev"       "esp32:esp32:esp32c3:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"                ""
 
 if [[ "${SIM:-0}" == "1" ]]; then
   add_target "ProMini-16MHz-SIM" "arduino:avr:pro:cpu=16MHzatmega328" "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
   add_target "ProMini-8MHz-SIM"   "arduino:avr:pro:cpu=8MHzatmega328"  "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
-  add_target "ESP32-Dev-SIM"      "esp32:esp32:esp32:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"                  "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
+  add_target "ESP32-C3-Dev-SIM"   "esp32:esp32:esp32c3:PartitionScheme=${ESP32_PARTITION_SCHEME},FlashSize=${ESP32_FLASH_SIZE}"               "--build-property compiler.cpp.extra_flags=\"-DSIM_MODE\" --build-property compiler.c.extra_flags=\"-DSIM_MODE\""
 fi
 
 # Filter targets via TARGETS env if provided
