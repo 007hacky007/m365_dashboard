@@ -1,155 +1,148 @@
 # M365 Xiaomi Scooter OLED Dashboard Documentation
 
 ## Overview
-This is a custom OLED display dashboard for the Xiaomi M365 scooter that connects to the scooter's communication bus to display real-time information and provide configuration options.
+Custom OLED dashboard for Xiaomi M365 that reads the scooter bus and shows real‑time data, trip stats, and a learned range estimate. Supports AVR (Pro Mini) and ESP32 (incl. ESP32‑C3), with optional OTA on ESP32.
 
-## Hardware Requirements
-- Arduino Pro Mini or Nano
-- 0.96" or 1.3" I2C OLED Display (SSD1306)
-- FTD1232 USB Programmer
-- 1N4148 Diode
-- 0.25W 120Ω Resistor
-- 3D Printed Case/Bracket
+## Hardware Targets
+- Arduino Pro Mini (8/16 MHz) — ultra‑small build, tight flash budget
+- ESP32 DevKit (ESP32)
+- ESP32‑C3 DevKit (RISC‑V)
+- 0.96" or 1.3" SSD1306 I2C OLED
+- FTD1232 (or similar) USB‑TTL programmer
+- 1N4148 diode, 120 Ω 0.25 W resistor, 3D‑printed case/bracket
+
+Notes
+- ESP32 uses 3.3 V logic; Pro Mini can run 5 V or 3.3 V versions.
+- Bus connection: UART @ 115200 baud to scooter main bus.
 
 ## Main Display Views
 
-### 1. **Normal Operation View** (Default)
-Displays core riding information:
-- **Speed**: Current speed in km/h (or mph if US version enabled)
-- **Trip Distance**: Current trip mileage in km
-- **Riding Time**: Time spent riding (MM:SS format)
-- **Current**: Battery current consumption in Amperes
-- **Temperature**: Mainframe temperature in Celsius (or Fahrenheit)
-- **Battery Bar**: Visual battery percentage indicator at bottom
+### 1) Normal view (default)
+Shows core ride info:
+- Speed (km/h or mph)
+- Trip distance (km)
+- Riding time (MM:SS)
+- Current or Power (toggle in settings)
+- Temperature (°C or °F)
+- Battery bar at the bottom (blinks during regen)
+- Small remaining range (km)
 
-### 2. **Big Speedometer View** 
-Automatically activates when speed > 1 km/h and `autoBig` is enabled:
-- **Speed Mode**: Large speed display with decimal precision
-- **Current Mode**: Large current consumption display
-- Battery indicator at bottom
+### 2) Big view (auto when speed > 1 km/h if enabled)
+- Speed mode: large speed with decimal
+- Current/Power mode: large A or W readout with unit
+- Battery bar kept at the bottom; regen “R” indicator near top right
 
-### 3. **Battery Information View**
-Detailed battery diagnostics:
-- **Voltage & Current**: Battery voltage (V) and current (A)
-- **Capacity**: Remaining capacity in mAh
-- **Temperatures**: T1 and T2 battery temperatures
-- **Individual Cells**: Voltage of all 15 battery cells (0-14)
+### 3) Battery info view
+- Voltage (V) and current (A)
+- Remaining capacity (mAh)
+- Battery temperatures T1/T2
+- Optional per‑cell voltages (0–14) if available
 
-### 4. **Statistics View**
-Long-term scooter statistics:
-- **Total Distance**: Lifetime odometer reading
-- **Power On Time**: Total time scooter has been powered on
+### 4) Trip stats view
+- Avg energy per km (Wh/km)
+- Max current (A) or Max power (W)
+- Umin and Umax (V)
+
+## Range Estimator
+- Learns a single “km per 1% SoC” from SoC drop vs. odometer delta (EMA with end‑of‑discharge correction).
+- Only uses SoC, odometer, and riding time (for a ≥3 km/h gate). It does not use current.
+- Persisted to EEPROM with a 10‑slot wear‑leveled ring and CRC; auto‑recovered at boot.
+- Configurable initial value and bounds in `M365/config.h`.
 
 ## Navigation & Controls
+- Enter Settings: hold Brake + Throttle (both max) when speed ≤ 1 km/h
+- In Settings, move/select with the same brake/throttle combos as before.
+- When stationary, a short brake press cycles secondary screens.
+- All settings are saved to EEPROM and persist.
 
-### Menu Access
-- **Brake + Throttle (both max)**: Enter settings menu when speed ≤ 1 km/h
+## Configuration Menus (highlights)
+Display settings
+- Auto big view (Yes/No)
+- Big view mode: Speed or Current/Power
+- Low battery warning: Off/5%/10%/15%
+- Big battery warning screen: Yes/No
+- Show battery info
+- Show current (A) or power (W)
+- Show voltage on main screen instead of speed
+- Big font style: STD or DIGIT
+- Hibernate on boot: Yes/No
+- Save & Exit
 
-### Menu Navigation
-- **Brake (max) + Throttle (min)**: Move to next menu item
-- **Brake (min) + Throttle (max)**: Change selected setting value
-- **Throttle (max) + Brake (min)**: Show statistics view (from normal view)
+M365 scooter settings
+- Cruise control: toggle and apply
+- Taillight: toggle and apply
+- KERS: Weak/Medium/Strong and apply
+- Wheel size: 8.5" or 10"
+- Exit
 
-### Settings Persistence
-All settings are automatically saved to EEPROM and persist between power cycles.
+ESP32 Wi‑Fi/OTA (ESP32 only)
+- Toggle Wi‑Fi/OTA AP
+- View/edit AP SSID/PASS (default SSID is derived from MAC; PASS: m365ota123)
+- OTA page: http://192.168.4.1/
 
-## Configuration Menus
+## Data Sources
+- Current/Voltage/SoC: BMS frame (S25C31). Displays use total scaled current if parallel packs are configured.
+- Speed/Odometer/Times/Temp: DRV frames (S23Cxx).
+- DRV current is not exposed in the stock frames we parse.
 
-### 1. **Display Settings Menu**
-- **Big Speedometer**: Auto-enable large speedometer when moving (Yes/No)
-- **Big Speedo Mode**: Choose between Speed or Current display
-- **Battery Warning**: Set low battery warning threshold (Off, 5%, 10%, 15%)
-- **Big Battery Warning**: Show full-screen battery warning (Yes/No)
-- **Battery Info**: Access detailed battery information view
-- **Configure M365**: Access scooter configuration menu
-- **Save and Exit**: Save settings and return to normal view
+## Parallel Battery Packs
+If you run two packs in parallel, the dashboard can scale the displayed current/power/energy to total pack current:
+- Edit `PACK1_MAH` and `PACK2_MAH` in `M365/config.h`.
+- Set `PACK2_MAH` to 0 to disable scaling (stock, single pack).
+- Range learning is independent of current and continues to use SoC and odometer only.
 
-### 2. **M365 Scooter Settings Menu**
-Controls actual scooter parameters:
-- **Cruise Control**: Enable/disable cruise control feature
-- **Update Cruise**: Apply cruise control setting to scooter
-- **Taillight**: Configure rear light behavior (Yes/No)
-- **Update Taillight**: Apply taillight setting to scooter
-- **KERS**: Set regenerative braking strength (Weak/Medium/Strong)
-- **Update KERS**: Apply KERS setting to scooter
-- **Wheel Size**: Configure for 8.5" or 10" wheels (affects speed calculation)
-- **Exit**: Return to display settings menu
+## Central Configuration
+All user‑tunable options live in `M365/config.h`:
+- PACK1_MAH, PACK2_MAH
+- RANGE_KM_PER_PCT_INIT, MIN/MAX, EMA_ALPHA, EOD_BETA
+- UI defaults (autoBig, bigMode, bigFontStyle, warnings, etc.)
+- OLED I2C address and ESP32 UART pins
 
-## Warning Features
+## Build & Flash
+Project includes a macOS‑friendly build script using Arduino CLI: `scripts/build_local.sh`
 
-### Battery Warnings
-- **Low Battery Alert**: Configurable warning at 5%, 10%, or 15%
-- **Battery Blinking**: Battery bar blinks when current is negative (regenerating)
-- **Big Warning Mode**: Full-screen battery warning when enabled
+Common usage
+- Build all default targets: `scripts/build_local.sh`
+- Include SIM variants: `SIM=1 scripts/build_local.sh`
+- Filter targets: `TARGETS="ESP32-Dev ESP32-C3-Dev" scripts/build_local.sh`
+- Clean before build: `CLEAN=1 scripts/build_local.sh`
 
-### Connection Status
-- Displays "BUS not connected!" if no communication with scooter
-- Watchdog timer prevents system freezing
+ESP32 partitions and OTA
+- By default OTA is enabled for ESP32 with a dual‑app “min_spiffs” scheme (FlashSize=4M).
+- To maximize single‑app size (no OTA): `OTA=0 scripts/build_local.sh` (uses “huge_app”).
 
-## Special Features
+Supported targets (examples)
+- AVR: ProMini‑16MHz, ProMini‑8MHz (+ SIM variants)
+- ESP32: ESP32‑Dev (+ SIM)
+- ESP32‑C3: ESP32‑C3‑Dev (+ SIM)
 
-### Hibernation Mode
-- **Brake + Throttle on startup**: Enter hibernation mode for firmware updates
-- Disables dashboard communication, allowing scooter firmware updates
-- Power cycle restores normal operation
+## Languages
+Multiple languages are available (see `M365/language.h`). On AVR, you can remove some to save flash. Default set includes: English, French, German, Spanish, Czech.
 
-### Multi-Language Support
-Supports multiple languages:
-- English (default)
-- French, German, Spanish, Czech, Italian
+## Technical Details
+Communication
+- UART 115200 baud on the scooter bus.
+- BMS (0x25C31) provides SoC/voltage/current; DRV (0x23xx) provides speed/odo/time/temp.
 
-### Unit Conversion
-- **US Version**: Automatically converts km/h to mph and Celsius to Fahrenheit
-- **Wheel Size Compensation**: Adjusts speed readings for 10" wheel upgrades
+Display
+- I2C (Wire) by default; SPI also supported (compile‑time option).
+- Custom fonts included; big view supports STD and DIGIT styles.
 
-## Technical Specifications
+Power
+- Pro Mini can be powered from 5 V; ESP32 from 3.3 V (on‑board regulator options vary by devkit).
 
-### Communication
-- **Protocol**: UART at 115200 baud
-- **Interface**: Connects to scooter's internal communication bus
-- **Data Refresh**: Real-time updates from scooter systems
+## Special Modes
+Hibernation mode (for scooter firmware updates)
+- Hold Brake + Throttle during power‑on to pause bus communication.
+- Update scooter firmware, then power‑cycle to resume dashboard.
 
-### Display Modes
-- **I2C Mode**: Default, connects via Wire library
-- **SPI Mode**: Alternative connection method (configurable)
-
-### Power Requirements
-- **Input**: 5V from scooter (can use 3.3V with Arduino Nano)
-- **Consumption**: Low power, suitable for continuous operation
-
-## Installation and Setup
-
-### Physical Installation
-1. Connect the OLED display to Arduino using I2C (SDA/SCL pins)
-2. Connect Arduino to scooter's communication bus (Yellow wire from MCU)
-3. Connect power: Red wire (5V), Black wire (GND)
-4. Install in 3D printed case and mount on scooter
-
-### Software Configuration
-- Set display mode in `defines.h` (I2C or SPI)
-- Choose language in `language.h`
-- Enable US units if needed
-- Flash firmware using Arduino IDE
-
-### Libraries Required
-- SSD1306Ascii (included in project)
-- WatchDog (included in project)
-- Custom fonts (included in project)
+ESP32 OTA mode
+- Enable Wi‑Fi in Settings (ESP32), connect to AP, open http://192.168.4.1/ and upload new firmware.
 
 ## Troubleshooting
+- No data: check UART wiring to the scooter bus.
+- Wrong speed: verify wheel size in settings.
+- Sketch too large on Pro Mini: disable languages/features or prefer ESP32 target.
+- Random glyphs: confirm correct font and language set; trim languages on AVR to save space.
 
-### Common Issues
-- **Random characters**: Comment out Russian language in defines.h
-- **No data display**: Check communication bus connection
-- **Arduino freezing**: Watchdog should reset, but may need power cycle
-- **Wrong speed readings**: Configure correct wheel size in settings
-
-### Firmware Updates
-To update M365 scooter firmware:
-1. Turn on scooter
-2. Immediately hold brake + throttle before logo disappears
-3. This enters hibernation mode, disabling dashboard communication
-4. Update scooter firmware normally
-5. Power cycle to restore dashboard functionality
-
-This dashboard provides comprehensive monitoring and control capabilities for the M365 scooter, enhancing the riding experience with detailed real-time information and customizable settings.
+This project enhances the M365 ride with clear real‑time metrics, a robust learned range estimate, and convenient OTA (ESP32).
