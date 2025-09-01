@@ -76,6 +76,8 @@ arduino-cli core install esp32:esp32
 step "Installing libraries from ZIPs"
 arduino-cli lib install --zip-path "${ROOT}/libraries/SSD1306Ascii.zip"
 arduino-cli lib install --zip-path "${ROOT}/libraries/WatchDog-1.2.0.zip"
+step "Ensuring U8g2 is installed"
+arduino-cli lib install "U8g2"
 
 # 6) Target matrix (matches CI)
 declare -a NAMES

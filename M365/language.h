@@ -15,7 +15,11 @@
 //#define LANG_IT //Italian
 
 #ifdef LANG_ENG
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
  
   const char noBUS1[] PROGMEM = {"BUS not"};
   const char noBUS2[] PROGMEM = {"connected!"};
@@ -100,7 +104,11 @@
 #endif
 
 #ifdef LANG_IT
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
  
   const char noBUS1[] PROGMEM = {"BUS non"};
   const char noBUS2[] PROGMEM = {"connesso!"};
@@ -176,7 +184,11 @@
 #endif
 
 #ifdef LANG_FRA
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
 
   const char noBUS1[] PROGMEM = {"BUS non"};
   const char noBUS2[] PROGMEM = {"connecté!"};
@@ -252,7 +264,11 @@
 #endif
   
 #ifdef LANG_ES
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
 
   const char noBUS1[] PROGMEM = {"BUS no"};
   const char noBUS2[] PROGMEM = {"conectado"};
@@ -328,7 +344,11 @@
   #endif
 
 #ifdef LANG_CZ
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
 
   const char noBUS1[] PROGMEM = {" Displej"};
   const char noBUS2[] PROGMEM = {"   neni   "};
@@ -404,13 +424,12 @@
   
 #endif
 
-//***********************************
-// End guard
-//***********************************
-#endif // M365_LANGUAGE_H
-
 #ifdef LANG_DE
+#if !defined(ARDUINO_ARCH_ESP32)
   #define defaultFont System5x7mod
+#else
+  #undef defaultFont
+#endif
  
   const char noBUS1[] PROGMEM = {"BUS nicht"};
   const char noBUS2[] PROGMEM = {"verbunden!"};
@@ -481,3 +500,8 @@
   const char l_c[] PROGMEM = {"C"};
   const char l_t[] PROGMEM = {"T"};
 #endif
+  
+//***********************************
+// End guard
+//***********************************
+#endif // M365_LANGUAGE_H

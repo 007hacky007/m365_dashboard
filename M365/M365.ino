@@ -165,14 +165,22 @@ void setup() {
   // Optional: Invert display for better visibility on yellow/blue OLEDs
   // display.displayRemap(true);
   
-  // Show M365 logo briefly during startup
-  display.setFont(m365);
-  // Use a distinct screen ID for splash so the first main view (ID 0)
-  // triggers a clear on entry and doesn’t overlay the logo (esp. on AVR)
+  // Show M365 logo/text briefly during startup
   displayClear(255, true);
+#if defined(ARDUINO_ARCH_ESP32)
+  display.setFont(stdNumb);
+  display.setCursor(0, 2);
+  display.print("M365");
+  display.setFont(defaultFont);
+  display.setCursor(0, 4);
+  display.print("Dashboard");
+  displayCommit();
+#else
+  display.setFont(m365);
   display.setCursor(0, 0);
   display.print((char)0x20);              // M365 logo character
   display.setFont(defaultFont);
+#endif
 
 #ifdef SIM_MODE
   // Initialize simulated telemetry values before first frame
@@ -231,6 +239,7 @@ void setup() {
 
   // Ensure splash is fully cleared before the first main frame draws
   display.clear();
+  displayCommit();
 }
 
 // Communication and query helpers moved to comms.{h,cpp}
@@ -321,6 +330,7 @@ void loop() {
 
   // Update display according to current state and inputs
   displayFSM();
+  displayCommit();
   // Update range learner regularly
   rangeTick();
 

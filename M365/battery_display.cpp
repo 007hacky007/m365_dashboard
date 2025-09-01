@@ -29,6 +29,59 @@ void showBatt(int percent, bool blinkIt) {
       display.print(' ');
     }
   }
+  #if defined(ARDUINO_ARCH_ESP32)
+    // Draw segmented battery bar (19 small rectangles), like AVR glyphs
+    const uint8_t y = 56; // row 7
+    const uint8_t segW = 4, segH = 6, step = 5, baseX = 5; // matches AVR layout
+    bool show = bigWarn || (warnBatteryPercent == 0) || (percent > warnBatteryPercent) || ((warnBatteryPercent != 0) && (millis() % 1000 < 500));
+    if (show) {
+      uint8_t pct = (percent > 100 ? 100 : (percent < 0 ? 0 : percent));
+      uint8_t filled = (uint8_t)((19U * (uint16_t)pct) / 100U);
+      if (blinkIt && (millis() % 1000 < 500)) filled = 0; // blink on regen
+      for (uint8_t i = 0; i < 19; ++i) {
+        uint8_t x = baseX + i * step;
+        if (i < filled) {
+          display.drawBox(x, y + 1, segW, segH);
+        } else {
+          display.drawFrame(x, y + 1, segW, segH);
+        }
+      }
+      // Percent text at far right (after last segment at x=99)
+      display.setCursor(100, 7);
+      if (percent < 100) display.print(' ');
+      if (percent < 10) display.print(' ');
+      display.print(percent);
+      display.print('%');
+    } else {
+      // Clear area covering the bar
+      display.drawBox(0, y, 104, 8);
+    }
+  #else
+    // Legacy ASCII-art battery (SSD1306Ascii fonts on AVR)
+    if (bigWarn || (warnBatteryPercent == 0) || (percent > warnBatteryPercent) || ((warnBatteryPercent != 0) && (millis() % 1000 < 500))) {
+      display.print((char)0x81);
+      for (int i = 0; i < 19; i++) {
+        display.setCursor(5 + i * 5, 7);
+        if (blinkIt && (millis() % 1000 < 500))
+          display.print((char)0x83);
+        else if (float(19) / 100 * percent > i)
+          display.print((char)0x82);
+        else
+          display.print((char)0x83);
+      }
+      display.setCursor(99, 7);
+      display.print((char)0x84);
+      if (percent < 100) display.print(' ');
+      if (percent < 10) display.print(' ');
+      display.print(percent);
+      display.print('%');
+    } else {
+      for (int i = 0; i < 34; i++) {
+        display.setCursor(i * 5, 7);
+        display.print(' ');
+      }
+    }
+  #endif
 }
 
 void showRangeSmall() {

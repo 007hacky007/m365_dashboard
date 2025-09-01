@@ -11,10 +11,10 @@
       "left": -160.97,
       "attrs": { "i2cAddress": "0x3c" }
   },
-  { "type": "wokwi-slide-potentiometer", "id": "throttle", "top": 20, "left": 120, "attrs": { "sliderValue": "0" } },
-  { "type": "wokwi-slide-potentiometer", "id": "brake",    "top": 100, "left": 120, "attrs": { "sliderValue": "0" } },
-  { "type": "wokwi-slide-potentiometer", "id": "speed",    "top": 180, "left": 120, "attrs": { "sliderValue": "0" } },
-  { "type": "wokwi-slide-switch", "id": "stat", "top": 250, "left": -20, "attrs": { "label": "Stationary" } }
+  { "type": "wokwi-slide-potentiometer", "id": "throttle", "top": -50, "left": 120, "attrs": { "sliderValue": "0" } },
+  { "type": "wokwi-slide-potentiometer", "id": "brake",    "top": 80, "left": 120, "attrs": { "sliderValue": "0" } },
+  { "type": "wokwi-slide-potentiometer", "id": "speed",    "top": 150, "left": 120, "attrs": { "sliderValue": "0" } },
+  { "type": "wokwi-slide-switch", "id": "stat", "top": 150, "left": -300, "attrs": { "label": "Stationary" } }
   ],
   "connections": [
     [ "esp32:3V3", "oled:VCC", "red", [ "v40", "h120" ] ],

@@ -21,31 +21,41 @@
 //#define DISPLAY_SPI
 #define DISPLAY_I2C
 
-#include "SSD1306Ascii.h"
-#ifdef DISPLAY_SPI
-  #include <SPI.h>
-  #include "SSD1306AsciiSpi.h"
-  #define PIN_CS  10
-  #define PIN_RST 9
-  #define PIN_DC  8
-  #define PIN_D0 13
-  #define PIN_D1 11
-#endif
 #ifdef DISPLAY_I2C
   #include <Wire.h>
-  #include "SSD1306AsciiWire.h"
-  // Default SSD1306 I2C address
-  // Address comes from config.h (OLED_I2C_ADDRESS)
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
+  // ESP32 path uses U8g2 for rendering
+  #include "u8g2_adapter.h"
+  #include "fonts/u8g2_alias.h"
+#else
+  // AVR and other MCUs stay on SSD1306Ascii for minimal footprint
+  #include "SSD1306Ascii.h"
+  #ifdef DISPLAY_SPI
+    #include <SPI.h>
+    #include "SSD1306AsciiSpi.h"
+    #define PIN_CS  10
+    #define PIN_RST 9
+    #define PIN_DC  8
+    #define PIN_D0 13
+    #define PIN_D1 11
+  #endif
+  #ifdef DISPLAY_I2C
+    #include "SSD1306AsciiWire.h"
+  #endif
 #endif
 
 // Fonts
-#include "fonts/m365.h"
-#include "fonts/System5x7mod.h"
-#include "fonts/stdNumb.h"
-#include "fonts/bigNumb.h"
-#include "fonts/segNumb.h"
-// Optional alternate: segNumbBold is available but unused by default
-//#include "fonts/segNumbBold.h"
+#if !defined(ARDUINO_ARCH_ESP32)
+  #include "fonts/m365.h"
+  #include "fonts/System5x7mod.h"
+  #include "fonts/stdNumb.h"
+  #include "fonts/bigNumb.h"
+  #include "fonts/segNumb.h"
+  // Optional alternate: segNumbBold is available but unused by default
+  //#include "fonts/segNumbBold.h"
+#endif
 
 // System
 #include <EEPROM.h>
@@ -63,6 +73,15 @@ void oledInit(bool showLogo = true);
 void oledService();
 bool i2cCheckAndRecover();
 bool displayClear(byte ID = 1, bool force = false);
+// Push the frame to the OLED on platforms that buffer (ESP32/U8g2)
+inline void displayCommit() {
+#if defined(ARDUINO_ARCH_ESP32)
+  extern U8g2DisplayAdapter display;
+  display.commit();
+#else
+  // SSD1306Ascii is immediate mode
+#endif
+}
 
 // Config/state
 #define LONG_PRESS 2000
@@ -141,18 +160,27 @@ bool displayClear(byte ID = 1, bool force = false);
   extern volatile int16_t oldBrakeVal, oldThrottleVal; extern volatile bool btnPressed; extern bool bAlarm; extern uint32_t timer; extern volatile bool oledBusy;
 #endif
 
-#ifdef DISPLAY_SPI
+#if defined(ARDUINO_ARCH_ESP32)
+  // Single display adapter type for ESP32
   #ifdef M365_DEFINE_GLOBALS
-    SSD1306AsciiSpi display;
+    U8g2DisplayAdapter display;
   #else
-    extern SSD1306AsciiSpi display;
+    extern U8g2DisplayAdapter display;
   #endif
-#endif
-#ifdef DISPLAY_I2C
-  #ifdef M365_DEFINE_GLOBALS
-    SSD1306AsciiWire display;
-  #else
-    extern SSD1306AsciiWire display;
+#else
+  #ifdef DISPLAY_SPI
+    #ifdef M365_DEFINE_GLOBALS
+      SSD1306AsciiSpi display;
+    #else
+      extern SSD1306AsciiSpi display;
+    #endif
+  #endif
+  #ifdef DISPLAY_I2C
+    #ifdef M365_DEFINE_GLOBALS
+      SSD1306AsciiWire display;
+    #else
+      extern SSD1306AsciiWire display;
+    #endif
   #endif
 #endif
 

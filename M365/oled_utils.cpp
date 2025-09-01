@@ -69,9 +69,11 @@ void oledInit(bool showLogo) {
   #ifdef WIRE_HAS_TIMEOUT
     Wire.setWireTimeout(25000, true);
   #endif
+#endif
+#if defined(ARDUINO_ARCH_ESP32)
+  display.begin(nullptr, OLED_I2C_ADDRESS);
+#else
   display.begin(&Adafruit128x64, OLED_I2C_ADDRESS);
-  s_i2cFast = false;
-  s_consecOK = 0;
 #endif
 #ifdef DISPLAY_SPI
   display.begin(&Adafruit128x64, PIN_CS, PIN_DC, PIN_RST);
@@ -79,10 +81,19 @@ void oledInit(bool showLogo) {
   display.setFont(defaultFont);
   if (showLogo) {
     display.clear();
+#if defined(ARDUINO_ARCH_ESP32)
+    display.setFont(stdNumb);
+    display.setCursor(0, 2);
+    display.print("M365");
+    display.setFont(defaultFont);
+    display.setCursor(0, 4);
+    display.print("Dashboard");
+#else
     display.setFont(m365);
     display.setCursor(0, 0);
     display.print((char)0x20);
     display.setFont(defaultFont);
+#endif
   }
 }
 

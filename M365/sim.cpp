@@ -163,7 +163,7 @@ void simTick() {
   }
 
   // Force zero speed/mileage when stationary switch is ON or speed pot is at zero
-  if (stationary) {
+  if (stationary || speedPotZero) {
     speed_mmpkh = 0;
     S25C31.current = 0;
   // Preserve user inputs so UI can detect simultaneous brake+throttle
