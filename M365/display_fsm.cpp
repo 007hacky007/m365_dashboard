@@ -1,6 +1,7 @@
 #include "defines.h"
 #include "comms.h"
 #include "battery_display.h"
+#include "aht10.h"
 
 // Main display function - handles all screen modes and user input
 void displayFSM() {
@@ -87,14 +88,41 @@ void displayFSM() {
       displayClear(2, true); // force clear when entering settings
     }
 
-    // Handle screen cycling by brake when stationary (speed=0)
-    // Edge on brake press only when throttle neutral and not in any modal screen
+    // Handle screen cycling when stationary:
+    // - Throttle press: next screen
+    // - Brake press: previous screen
+    // Only when not in any modal screen
     if (!Settings && !M365Settings && !ShowBattInfo) {
-      bool stationary = (c_speed <= 200); // same threshold as elsewhere
-      if (stationary && (brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) {
-        // Cycle: 0 -> 1 -> 2 -> 0
-        uiAltScreen = (uiAltScreen + 1) % 3;
-        timer = millis() + LONG_PRESS;
+      bool stationary = (c_speed <= 200);
+      if (stationary) {
+        // Determine number of screens by platform (ESP32 has extra temperatures screen)
+        uint8_t totalScreens =
+#if defined(ARDUINO_ARCH_ESP32)
+          4
+#else
+          3
+#endif
+        ;
+        // Edge handlers based on config
+        bool thEdge = (throttleVal == 1) && (oldThrottleVal != 1) && (brakeVal <= 0);
+        bool brEdge = (brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0);
+#if CFG_NAV_THROTTLE_NEXT
+        if (thEdge) { // throttle -> next
+          uiAltScreen = (uiAltScreen + 1) % totalScreens;
+          timer = millis() + LONG_PRESS;
+        } else if (brEdge) { // brake -> previous
+          uiAltScreen = (uiAltScreen == 0) ? (totalScreens - 1) : (uiAltScreen - 1);
+          timer = millis() + LONG_PRESS;
+        }
+#else
+        if (brEdge) { // brake -> next
+          uiAltScreen = (uiAltScreen + 1) % totalScreens;
+          timer = millis() + LONG_PRESS;
+        } else if (thEdge) { // throttle -> previous
+          uiAltScreen = (uiAltScreen == 0) ? (totalScreens - 1) : (uiAltScreen - 1);
+          timer = millis() + LONG_PRESS;
+        }
+#endif
       }
     }
 
@@ -171,13 +199,25 @@ void displayFSM() {
   case 8: showVoltageMain = !showVoltageMain; break;
   case 9: bigFontStyle = (bigFontStyle == 0) ? 1 : 0; break;
   case 10: hibernateOnBoot = !hibernateOnBoot; break;
-  case 11: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(11, wifiEnabled); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM_COMMIT(); Settings = false; break;
+  case 11: {
+    // Cycle main temperature source (ESP32: 0..3)
+    uint8_t maxSrc =
+#if CFG_AHT10_ENABLE
+  3
+#else
+  2
+#endif
+  ;
+    if (mainTempSource >= maxSrc) mainTempSource = 0; else mainTempSource++;
+    break;
+  }
+  case 12: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(11, wifiEnabled); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM.put(14, mainTempSource); EEPROM_COMMIT(); Settings = false; break;
 #else
   case 6: showPower = !showPower; break;
   case 7: showVoltageMain = !showVoltageMain; break;
   case 8: bigFontStyle = (bigFontStyle == 0) ? 1 : 0; break;
   case 9: hibernateOnBoot = !hibernateOnBoot; break;
-  case 10: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM_COMMIT(); Settings = false; break;
+  case 10: EEPROM.put(1, autoBig); EEPROM.put(2, warnBatteryPercent); EEPROM.put(3, bigMode); EEPROM.put(4, bigWarn); EEPROM.put(9, hibernateOnBoot); EEPROM.put(10, showPower); EEPROM.put(12, showVoltageMain); EEPROM.put(13, bigFontStyle); EEPROM.put(14, mainTempSource); EEPROM_COMMIT(); Settings = false; break;
 #endif
       } else if ((brakeVal == 1) && (oldBrakeVal != 1) && (throttleVal <= 0) && (oldThrottleVal <= 0)) {
 #if defined(ARDUINO_ARCH_ESP32)
@@ -236,7 +276,7 @@ void displayFSM() {
       // Determine total items depending on platform
     uint8_t totalItems =
 #if defined(ARDUINO_ARCH_ESP32)
-  12; // indices 0..11
+  13; // indices 0..12 (extra main temp source + save)
 #else
   11; // indices 0..10
 #endif
@@ -269,7 +309,18 @@ void displayFSM() {
   case 8: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
   case 9: display.print((const __FlashStringHelper *) confScr12); display.print(bigFontStyle ? (const __FlashStringHelper *) confScr12b : (const __FlashStringHelper *) confScr12a); break;
   case 10: display.print((const __FlashStringHelper *) confScr7); display.print(hibernateOnBoot ? (const __FlashStringHelper *) l_Yes : (const __FlashStringHelper *) l_No); break;
-  case 11: display.print((const __FlashStringHelper *) confScr8); break;
+  case 11: display.print((const __FlashStringHelper *) confScr13);
+    switch (mainTempSource) {
+      case 0: display.print((const __FlashStringHelper *) confScr13a); break;
+      case 1: display.print((const __FlashStringHelper *) confScr13b); break;
+      case 2: display.print((const __FlashStringHelper *) confScr13c); break;
+#if CFG_AHT10_ENABLE
+      case 3: display.print((const __FlashStringHelper *) confScr13d); break;
+#endif
+      default: display.print((const __FlashStringHelper *) confScr13a); break;
+    }
+    break;
+  case 12: display.print((const __FlashStringHelper *) confScr8); break;
 #else
       case 6: display.print((const __FlashStringHelper *) confScr9); display.print(showPower ? (const __FlashStringHelper *) l_w : (const __FlashStringHelper *) l_a); break;
       case 7: display.print((const __FlashStringHelper *) confScr11); display.print(showVoltageMain ? (const __FlashStringHelper *) confScr11b : (const __FlashStringHelper *) confScr11a); break;
@@ -313,7 +364,7 @@ void displayFSM() {
           // Translate spaces to ';' (blank glyph) only for DIGIT
           if (bigFontStyle == 1) { for (uint8_t i = 0; i < 3; ++i) if (buf[i] == ' ') buf[i] = (char)0x3B; }
           if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
-          uint8_t yDigits = (bigFontStyle == 0) ? 0 : 3;
+          uint8_t yDigits = (bigFontStyle == 0) ? 0 : 2;
           display.setCursor(0, yDigits);  display.print(buf[0]);
           display.setCursor(26, yDigits); display.print(buf[1]);
           display.setCursor(54, yDigits); display.print(buf[2]);
@@ -352,8 +403,8 @@ void displayFSM() {
       fsBattInfo();
     } else {
       // Decide which alt screen to render
-      uint8_t screenToShow = uiAltScreen; // 0 main, 1 trip stats, 2 odometer
-      if (screenToShow == 2) {
+  uint8_t screenToShow = uiAltScreen; // 0 main, 1 trip stats, 2 odometer, 3 temperatures (ESP32 only)
+  if (screenToShow == 2) {
         // Odometer/power-on time screen (original triggered by throttle)
         displayClear(3);
         display.set1X(); display.setFont(defaultFont); display.setCursor(0, 0);
@@ -370,7 +421,7 @@ void displayFSM() {
         if (tmp_0 < 100) display.print(' '); if (tmp_0 < 10) display.print(' ');
         display.print(tmp_0); display.print(':'); if (tmp_1 < 10) display.print('0'); display.print(tmp_1);
         return;
-      } else if (screenToShow == 1) {
+  } else if (screenToShow == 1) {
         // Trip stats: Avg Wh/km, Max A/W, Umin and Umax (separate lines)
         displayClear(6);
         display.set1X(); display.setFont(defaultFont);
@@ -419,15 +470,115 @@ void displayFSM() {
         uint16_t vmax_i = tripMaxVoltage_cV / 100; uint16_t vmax_f = tripMaxVoltage_cV % 100;
         if (vmax_i < 10) display.print(' ');
         display.print(vmax_i); display.print('.'); if (vmax_f < 10) display.print('0'); display.print(vmax_f); display.print(' '); display.print((const __FlashStringHelper *) l_v);
+  return;
+  }
+#if defined(ARDUINO_ARCH_ESP32)
+  else if (screenToShow == 3) {
+  // Temperatures screen: Batt T1/T2 and DRV temp
+  displayClear(13);
+  display.set1X(); display.setFont(defaultFont);
+
+  // Battery temps from S25C31.temp1/temp2 are raw Celsius degrees
+  int16_t t1 = (int16_t)S25C31.temp1;
+  int16_t t2 = (int16_t)S25C31.temp2;
+  // DRV temp is in 0.1°C units in S23CB0.mainframeTemp
+  int16_t tdrv10 = S23CB0.mainframeTemp; int16_t tdrv = tdrv10 / 10;
+  // Unit handling
+#ifdef US_Version
+  auto c2f = [](int16_t c){ return (int16_t)(c * 9 / 5 + 32); };
+  t1 = c2f(t1); t2 = c2f(t2); tdrv = c2f(tdrv);
+#endif
+  // Batt label
+  display.setCursor(0, 0); display.print((const __FlashStringHelper *) tempBatt);
+  // Batt values under the label
+  display.setFont(stdNumb);
+  display.setCursor(0, 1);
+  if (t1 < 10 && t1 > -10) display.print(' ');
+  display.print(t1);
+  display.setFont(defaultFont); display.print((char)0x80);
+#ifdef US_Version
+  display.print('F');
+#else
+  display.print((const __FlashStringHelper *) l_c);
+#endif
+  display.setFont(stdNumb);
+  display.setCursor(87, 1);
+  if (t2 < 10 && t2 > -10) display.print(' ');
+  display.print(t2);
+  display.setFont(defaultFont); display.print((char)0x80);
+#ifdef US_Version
+  display.print('F');
+#else
+  display.print((const __FlashStringHelper *) l_c);
+#endif
+
+  // DRV label
+  display.setFont(defaultFont); display.setCursor(0, 3); display.print((const __FlashStringHelper *) tempDrv);
+  // DRV value under the label
+  display.setFont(stdNumb); display.setCursor(0, 4);
+  if (tdrv < 10 && tdrv > -10) display.print(' ');
+  display.print(tdrv);
+  display.setFont(defaultFont); display.print((char)0x80);
+#ifdef US_Version
+  display.print('F');
+#else
+  display.print((const __FlashStringHelper *) l_c);
+#endif
+
+#if CFG_AHT10_ENABLE
+  // Optional AHT10 ambient temp/humidity (ESP32 only)
+  if (g_ahtPresent) {
+    // Draw to the right side to avoid overlap
+    display.setFont(defaultFont);
+  // Humidity: show integer RH and a big '%' next to it
+  display.setCursor(64, 3); display.print("RH:");
+  display.setFont(stdNumb); display.setCursor(87, 3);
+  uint16_t rh_i = (uint16_t)(g_ahtHum + 0.5f);
+  if (rh_i > 100) rh_i = 100;
+  display.print(rh_i);
+  // Append percent in large size (2X default font) at safe column
+  uint8_t endCol = display.col(); if (endCol > 116) endCol = 116;
+  display.setFont(defaultFont); display.set2X();
+  display.setCursor(endCol, 3); display.print('%');
+  display.set1X();
+
+  // Ambient temperature label under the RH area
+  display.setCursor(64, 5); display.print("Amb:");
+  display.setFont(stdNumb); display.setCursor(87, 5);
+    int16_t ta = (int16_t)(g_ahtTempC + (g_ahtTempC >= 0 ? 0.5f : -0.5f));
+#ifdef US_Version
+    ta = (int16_t)(ta * 9 / 5 + 32);
+#endif
+    if (ta < 10 && ta > -10) display.print(' ');
+    display.print(ta);
+    display.setFont(defaultFont); display.print((char)0x80);
+#ifdef US_Version
+    display.print('F');
+#else
+    display.print((const __FlashStringHelper *) l_c);
+#endif
+  }
+#endif // CFG_AHT10_ENABLE
         return;
       }
+#endif
 
       displayClear(0);
       m365_info.milh = S23CB0.mileageCurrent / 100;
       m365_info.mill = S23CB0.mileageCurrent % 100;
       m365_info.Min = S23C3A.ridingTime / 60;
       m365_info.Sec = S23C3A.ridingTime % 60;
-      m365_info.temp = S23CB0.mainframeTemp / 10;
+      // Select main temperature source
+      int16_t tempC = S23CB0.mainframeTemp / 10; // DRV default
+      switch (mainTempSource) {
+  case 1: tempC = (int16_t)S25C31.temp1; break; // Batt T1
+  case 2: tempC = (int16_t)S25C31.temp2; break; // Batt T2
+#if defined(ARDUINO_ARCH_ESP32) && CFG_AHT10_ENABLE
+  case 3: tempC = (int16_t)(g_ahtTempC + (g_ahtTempC >= 0 ? 0.5f : -0.5f)); break; // Ambient
+#endif
+  default: break; // DRV
+      }
+      m365_info.temp = tempC;
 #ifdef US_Version
       m365_info.milh = m365_info.milh/1.609; m365_info.mill = m365_info.mill/1.609; m365_info.temp = m365_info.temp*9/5+32;
 #endif

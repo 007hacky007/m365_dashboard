@@ -49,6 +49,10 @@ void simInit() {
   #ifdef SIM_MODE
   #if defined(ARDUINO_ARCH_ESP32)
     pinMode(SIM_STATIONARY_PIN, INPUT_PULLUP);
+    // Ensure full 12-bit ADC width so analogRead returns 0..4095
+    #if defined(ADC_12Bit)
+      analogReadResolution(12);
+    #endif
   #else
     pinMode(SIM_STATIONARY_PIN, INPUT_PULLUP);
     // Use default AVcc reference for stable ADC reads in Wokwi
@@ -159,7 +163,7 @@ void simTick() {
   }
 
   // Force zero speed/mileage when stationary switch is ON or speed pot is at zero
-  if (stationary || speedPotZero) {
+  if (stationary) {
     speed_mmpkh = 0;
     S25C31.current = 0;
   // Preserve user inputs so UI can detect simultaneous brake+throttle

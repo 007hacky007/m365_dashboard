@@ -69,12 +69,25 @@
 #define CFG_SHOW_VOLTAGE_MAIN_DEFAULT true
 #endif
 
+// Default source for temperature on main screen: 0=DRV, 1=Batt T1, 2=Batt T2, 3=Ambient(AHT10, ESP32 only)
+#ifndef CFG_MAIN_TEMP_SOURCE_DEFAULT
+#define CFG_MAIN_TEMP_SOURCE_DEFAULT 0
+#endif
+
 // =========================
 // Hardware Pins / Addresses
 // =========================
 // OLED I2C address
 #ifndef OLED_I2C_ADDRESS
 #define OLED_I2C_ADDRESS 0x3C
+#endif
+
+// Optional AHT10 ambient temp/humidity sensor on the same I2C bus (ESP32 only)
+#ifndef CFG_AHT10_ENABLE
+#define CFG_AHT10_ENABLE 1   // 1=enable on ESP32 builds; 0=disable and hide from UI
+#endif
+#ifndef AHT10_I2C_ADDRESS
+#define AHT10_I2C_ADDRESS 0x38
 #endif
 
 // ESP32 UART pins for Xiaomi port (ignored on AVR)
@@ -89,3 +102,12 @@
 // Regional / Units
 // =========================
 // Define US_Version externally if you want mph/°F conversion (kept as-is here).
+
+// =========================
+// UI Navigation
+// =========================
+// If set to 1, throttle advances to next screen and brake goes back (default).
+// If set to 0, brake advances and throttle goes back.
+#ifndef CFG_NAV_THROTTLE_NEXT
+#define CFG_NAV_THROTTLE_NEXT 1
+#endif

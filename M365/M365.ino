@@ -19,6 +19,7 @@
 #include "comms.h"
 #include "display_fsm.h"
 #include "range_estimator.h"
+#include "aht10.h"
 #ifdef SIM_MODE
 #include "sim.h"
 #endif
@@ -125,6 +126,7 @@ void setup() {
   wifiEnabled = EEPROM.read(11);         // WiFi/OTA toggle
 #endif
   bigFontStyle = EEPROM.read(13);        // Big font style: 0=STD,1=DIGIT
+  mainTempSource = EEPROM.read(14);      // Main temp source
   } else {
     // First time setup - save default values to EEPROM
     EEPROM.put(0, 128);                    // Magic number to indicate valid config
@@ -143,6 +145,7 @@ void setup() {
 #endif
   EEPROM.put(12, showVoltageMain);
     EEPROM.put(13, bigFontStyle);
+    EEPROM.put(14, mainTempSource);
   EEPROM_COMMIT();
   }
 
@@ -153,6 +156,11 @@ void setup() {
   oledInit(false); // Centralized OLED init (no splash/logo here)
   // Initialize range estimator after EEPROM is ready and before loop
   rangeInit();
+
+#if defined(ARDUINO_ARCH_ESP32) && CFG_AHT10_ENABLE
+  // Initialize optional AHT10 on I2C (same bus as OLED)
+  aht10Init();
+#endif
   
   // Optional: Invert display for better visibility on yellow/blue OLEDs
   // display.displayRemap(true);
@@ -315,6 +323,15 @@ void loop() {
   displayFSM();
   // Update range learner regularly
   rangeTick();
+
+#if defined(ARDUINO_ARCH_ESP32) && CFG_AHT10_ENABLE
+  // Opportunistically refresh AHT10 at ~2 Hz without blocking UI too much
+  static uint32_t nextAht = 0; uint32_t nowA = millis();
+  if ((int32_t)(nowA - nextAht) >= 0) {
+    nextAht = nowA + 500;
+    float t, h; (void)aht10Read(t, h);
+  }
+#endif
 
   // Service OLED (I2C recovery / yield)
   oledService();

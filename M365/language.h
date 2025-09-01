@@ -40,6 +40,11 @@
   const char confScr12[] PROGMEM = {"Big font: "};
   const char confScr12a[] PROGMEM = {"  STD   "};
   const char confScr12b[] PROGMEM = {"DIGITAL"};
+  const char confScr13[] PROGMEM = {"Main temp: "};
+  const char confScr13a[] PROGMEM = {"DRV"};
+  const char confScr13b[] PROGMEM = {"T1 "};
+  const char confScr13c[] PROGMEM = {"T2 "};
+  const char confScr13d[] PROGMEM = {"AMB"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
   const char wifiMenu3[] PROGMEM = {"PASS:"};
@@ -58,6 +63,10 @@
   const char statsUminUmax[] PROGMEM = {"Umin/Umax:"};
   const char statsUmin[] PROGMEM = {"Umin:"};
   const char statsUmax[] PROGMEM = {"Umax:"};
+  // Temperatures screen
+  const char tempHdr[] PROGMEM = {"Temperatures"};
+  const char tempBatt[] PROGMEM = {"Batt T1/T2:"};
+  const char tempDrv[] PROGMEM = {"DRV temp:"};
  
   const char M365CfgScr1[] PROGMEM = {"Cruise control: "};
   const char M365CfgScr2[] PROGMEM = {"Update Cruise"};

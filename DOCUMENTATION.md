@@ -21,7 +21,7 @@ Notes
 Shows core ride info:
 - Speed (km/h or mph)
 - Trip distance (km)
-- Riding time (MM:SS)
+Custom OLED dashboard for Xiaomi M365 that reads the scooter bus and shows real‑time data, trip stats, and a learned range estimate. Supports AVR (Pro Mini) and ESP32 (incl. ESP32‑C3), with optional OTA on ESP32. ESP32 builds can also show ambient temperature and humidity using an optional AHT10 sensor.
 - Current or Power (toggle in settings)
 - Temperature (°C or °F)
 - Battery bar at the bottom (blinks during regen)
@@ -29,7 +29,7 @@ Shows core ride info:
 
 ### 2) Big view (auto when speed > 1 km/h if enabled)
 - Speed mode: large speed with decimal
-- Current/Power mode: large A or W readout with unit
+- Temperature (°C or °F) from a selectable source: DRV, Battery T1, Battery T2 (and Ambient on ESP32)
 - Battery bar kept at the bottom; regen “R” indicator near top right
 
 ### 3) Battery info view
@@ -44,11 +44,19 @@ Shows core ride info:
 - Umin and Umax (V)
 
 ## Range Estimator
+### 5) Odometer & power‑on time view
+- Total distance (km)
+- Power‑on time (MM:SS)
+
+### 6) Temperatures view (ESP32 only)
+- Battery T1 and T2 (°C/°F)
+- DRV temperature (°C/°F)
+- If AHT10 is enabled and present: Ambient RH (%) and Ambient temp (°C/°F)
 - Learns a single “km per 1% SoC” from SoC drop vs. odometer delta (EMA with end‑of‑discharge correction).
 - Only uses SoC, odometer, and riding time (for a ≥3 km/h gate). It does not use current.
-- Persisted to EEPROM with a 10‑slot wear‑leveled ring and CRC; auto‑recovered at boot.
-- Configurable initial value and bounds in `M365/config.h`.
-
+Enter Settings: hold Brake + Throttle (both max) when speed ≤ 1 km/h
+In Settings, move/select with brake/throttle presses as before.
+When stationary, you can cycle screens: throttle = next, brake = previous. You can flip this mapping via CFG_NAV_THROTTLE_NEXT.
 ## Navigation & Controls
 - Enter Settings: hold Brake + Throttle (both max) when speed ≤ 1 km/h
 - In Settings, move/select with the same brake/throttle combos as before.
@@ -60,6 +68,7 @@ Display settings
 - Auto big view (Yes/No)
 - Big view mode: Speed or Current/Power
 - Low battery warning: Off/5%/10%/15%
+- Main temperature on default screen: DRV / Batt T1 / Batt T2 (/ Ambient on ESP32)
 - Big battery warning screen: Yes/No
 - Show battery info
 - Show current (A) or power (W)
@@ -68,6 +77,7 @@ Display settings
 - Hibernate on boot: Yes/No
 - Save & Exit
 
+- Ambient temperature & humidity (ESP32): optional AHT10 on I2C. If disabled in config, it’s ignored and hidden. In SIM mode, synthetic ambient values are fed automatically—no sensor wiring needed.
 M365 scooter settings
 - Cruise control: toggle and apply
 - Taillight: toggle and apply
@@ -75,6 +85,9 @@ M365 scooter settings
 - Wheel size: 8.5" or 10"
 - Exit
 
+- AHT10 options (ESP32): `CFG_AHT10_ENABLE` (1/0), `AHT10_I2C_ADDRESS` (default 0x38)
+- Main temp source default: `CFG_MAIN_TEMP_SOURCE_DEFAULT` (0=DRV, 1=T1, 2=T2, 3=Ambient on ESP32)
+- Screen navigation mapping: `CFG_NAV_THROTTLE_NEXT` (1=throttle next, 0=brake next)
 ESP32 Wi‑Fi/OTA (ESP32 only)
 - Toggle Wi‑Fi/OTA AP
 - View/edit AP SSID/PASS (default SSID is derived from MAC; PASS: m365ota123)

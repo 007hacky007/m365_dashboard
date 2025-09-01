@@ -76,9 +76,10 @@ bool displayClear(byte ID = 1, bool force = false);
   bool hibernateOnBoot = CFG_HIBERNATE_ON_BOOT_DEFAULT;
   bool showPower = CFG_SHOW_POWER_DEFAULT;
   bool showVoltageMain = CFG_SHOW_VOLTAGE_MAIN_DEFAULT;
+  uint8_t mainTempSource = CFG_MAIN_TEMP_SOURCE_DEFAULT; // 0=DRV,1=T1,2=T2,3=AMB(ESP32)
 #else
   extern uint8_t warnBatteryPercent; extern bool autoBig; extern uint8_t bigMode; extern uint8_t bigFontStyle;
-  extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain;
+  extern bool bigWarn; extern bool hibernateOnBoot; extern bool showPower; extern bool showVoltageMain; extern uint8_t mainTempSource;
 #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
@@ -101,7 +102,7 @@ bool displayClear(byte ID = 1, bool force = false);
 
 // UI alternate screens and per-trip metrics (since power on)
 #ifdef M365_DEFINE_GLOBALS
-  uint8_t uiAltScreen = 0; // 0=main, 1=trip stats, 2=odometer
+  uint8_t uiAltScreen = 0; // 0=main, 1=trip stats, 2=odometer, 3=temperatures
   uint32_t tripEnergy_Wh_x100 = 0; // hundredths of Wh
   uint32_t lastPowerOnTime_s = 0;
   uint16_t tripMaxCurrent_cA = 0; // centi-amps
@@ -210,17 +211,18 @@ bool displayClear(byte ID = 1, bool force = false);
     extern volatile bool gSimStationary;
   #endif
   #if defined(ARDUINO_ARCH_ESP32)
+    // Use ESP32-C3 friendly defaults for SIM mode
     #ifndef SIM_THROTTLE_PIN
-  #define SIM_THROTTLE_PIN 36 // SVP
+      #define SIM_THROTTLE_PIN 2   // ADC-capable
     #endif
     #ifndef SIM_BRAKE_PIN
-  #define SIM_BRAKE_PIN    39 // SVN
+      #define SIM_BRAKE_PIN    3   // ADC-capable
     #endif
     #ifndef SIM_SPEED_PIN
-      #define SIM_SPEED_PIN    34 // ADC1 CH6
+      #define SIM_SPEED_PIN    4   // ADC-capable
     #endif
     #ifndef SIM_STATIONARY_PIN
-      #define SIM_STATIONARY_PIN 32 // GPIO32, digital input with internal pull-up
+      #define SIM_STATIONARY_PIN 10 // digital input with internal pull-up
     #endif
   #else
     #ifndef SIM_THROTTLE_PIN
