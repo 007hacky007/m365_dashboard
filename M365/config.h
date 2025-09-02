@@ -54,7 +54,7 @@
 #define CFG_BIGMODE_DEFAULT 1        // 0=speed, 1=current/power
 #endif
 #ifndef CFG_BIGFONTSTYLE_DEFAULT
-#define CFG_BIGFONTSTYLE_DEFAULT 1   // 0=STD, 1=DIGIT
+#define CFG_BIGFONTSTYLE_DEFAULT 1   // 0=MATRIX, 1=DIGIT
 #endif
 #ifndef CFG_BIGWARN_DEFAULT
 #define CFG_BIGWARN_DEFAULT false

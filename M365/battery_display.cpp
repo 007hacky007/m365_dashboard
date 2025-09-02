@@ -1,11 +1,15 @@
 #include "battery_display.h"
 #include "range_estimator.h"
+#if defined(ARDUINO_ARCH_ESP32)
+#include "fonts/odroid_charset_u8g2.h"
+#endif
 
 void showBatt(int percent, bool blinkIt) {
   display.set1X();
   display.setFont(defaultFont);
   display.setCursor(0, 7);
 
+#if !defined(ARDUINO_ARCH_ESP32)
   if (bigWarn || (warnBatteryPercent == 0) || (percent > warnBatteryPercent) || ((warnBatteryPercent != 0) && (millis() % 1000 < 500))) {
     display.print((char)0x81);
     for (int i = 0; i < 19; i++) {
@@ -29,6 +33,7 @@ void showBatt(int percent, bool blinkIt) {
       display.print(' ');
     }
   }
+#endif
   #if defined(ARDUINO_ARCH_ESP32)
     // Draw segmented battery bar (19 small rectangles), like AVR glyphs
     const uint8_t y = 56; // row 7
@@ -47,14 +52,30 @@ void showBatt(int percent, bool blinkIt) {
         }
       }
       // Percent text at far right (after last segment at x=99)
-      display.setCursor(100, 7);
-      if (percent < 100) display.print(' ');
-      if (percent < 10) display.print(' ');
-      display.print(percent);
-      display.print('%');
+      // Render digits with a compact 5x7 matrix and right-align next to '%'
+      const uint8_t percentX = 121; // X for '%'
+      const uint8_t gap = 1;        // 1px gap between digits and '%'
+      const uint8_t digitW = 5; const uint8_t spacing = 1; // 5x7 with 1px column spacing
+      // Determine string and count
+      char buf[4]; uint8_t count = 0;
+      if (pct >= 100) { buf[0] = '1'; buf[1] = '0'; buf[2] = '0'; count = 3; }
+      else if (pct >= 10) { buf[0] = char('0' + (pct / 10)); buf[1] = char('0' + (pct % 10)); count = 2; }
+      else { buf[0] = char('0' + pct); count = 1; }
+      // Compute start X so the digits are right-aligned to percentX - gap
+      uint8_t total = digitW * count + spacing * (count > 0 ? (count - 1) : 0);
+      int16_t startX = (int16_t)percentX - gap - total;
+      uint8_t yBase = 56; // align baseline within row 7
+      for (uint8_t i = 0; i < count; ++i) {
+        uint8_t dx = startX + i * (digitW + spacing);
+        OdroidCharset::drawGlyph5x7(dx, yBase, (uint8_t)(buf[i] - '0'));
+      }
+      // Percent symbol with default font at the far right, same row
+      display.setCursor(percentX, 7); display.print('%');
     } else {
       // Clear area covering the bar
       display.drawBox(0, y, 104, 8);
+      // Clear the percent area on the right as well
+      display.drawBox(100, y, 28, 8);
     }
   #else
     // Legacy ASCII-art battery (SSD1306Ascii fonts on AVR)

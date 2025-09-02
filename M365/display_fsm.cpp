@@ -429,31 +429,61 @@ void displayFSM() {
         auto drawLargeDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawLarge(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
         auto drawSmallDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawSmall(x, y, (uint8_t)d); };
   // Style-aware positioning
-  const uint8_t stepLarge = (bigFontStyle == 0) ? 30 : 24; // MATRIX uses 28px wide (2x14) -> give 2px padding
-  const uint8_t X0 = 0, X1 = stepLarge, X2 = uint8_t(stepLarge * 2), X3 = uint8_t(stepLarge * 3);
+  // MATRIX now uses smaller digits (14px wide); add 3px more spacing -> step 19; SEVENSEG keeps large 24 step
+  const uint8_t stepMain = (bigFontStyle == 0) ? 20 : 24;
+  const uint8_t X0 = 0, X1 = stepMain, X2 = uint8_t(stepMain * 2), X3 = uint8_t(stepMain * 3);
   const uint8_t Y0 = 0;
-  const uint8_t yOffset = (bigFontStyle == 1) ? 15 : 3; // move MATRIX up (was 7), keep SEVENSEG baseline alignment
+  const uint8_t yOffset = (bigFontStyle == 1) ? 15 : 15; // align MATRIX baseline with 2x 'W'
         if (showPower) {
           uint16_t W = m365_info.pwh; if (W > 9999) W = 9999;
           int d0 = (W >= 1000) ? ((W / 1000) % 10) : -1; int d1 = (W >= 100) ? ((W / 100) % 10) : -1; int d2 = (W >= 10) ? ((W / 10) % 10) : -1; int d3 = (W % 10);
-          if (d0 >= 0) drawLargeDigit(X0, Y0 + yOffset, d0);
-          if (d1 >= 0) drawLargeDigit(X1, Y0 + yOffset, d1);
-          if (d2 >= 0) drawLargeDigit(X2, Y0 + yOffset, d2);
-          drawLargeDigit(X3, Y0 + yOffset, d3);
-          // Place unit further right; account for true digit width per style
-          const uint8_t digitW = (bigFontStyle == 0) ? 28 : 17; // MATRIX large=28, SEVENSEG large=17
-          const uint8_t extraPad = (bigFontStyle == 0) ? 12 : 8; // push 'W' more to the right for MATRIX
-          uint8_t ux = X3 + digitW + extraPad; if (ux > 112) ux = 112;
-          uint8_t yUnit = 4; display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
+          // For MATRIX, use smaller glyphs; for SEVENSEG, large as before
+          auto drawMainDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
+          // Right-align MATRIX digits with respect to the 'W' unit
+          const uint8_t digitW = (bigFontStyle == 0) ? 14 : 17; // glyph widths
+          const uint8_t unitX = 112; // fixed position for 'W' to the right
+          const uint8_t gapUnit = (bigFontStyle == 0) ? 8 : 8; // gap between last digit and unit
+          uint8_t ux = unitX; // 'W' X
+          // Determine how many digits will be drawn
+          uint8_t nDigits = (W >= 1000) ? 4 : (W >= 100) ? 3 : (W >= 10) ? 2 : 1;
+          // Compute the X where the last digit's right edge should land
+          int16_t digitsRight = (int16_t)ux - gapUnit;
+          int16_t startX = digitsRight - digitW - (int16_t)(stepMain) * (nDigits - 1);
+          // Draw present digits starting from startX
+          int idx = 0;
+          if (d0 >= 0) { drawMainDigit((uint8_t)(startX + stepMain * idx), Y0 + yOffset, d0); idx++; }
+          if (d1 >= 0) { drawMainDigit((uint8_t)(startX + stepMain * idx), Y0 + yOffset, d1); idx++; }
+          if (d2 >= 0) { drawMainDigit((uint8_t)(startX + stepMain * idx), Y0 + yOffset, d2); idx++; }
+          drawMainDigit((uint8_t)(startX + stepMain * idx), Y0 + yOffset, d3);
+          // Align unit baseline with digits: MATRIX uses row 3, DIGITAL keeps row 4
+          uint8_t yUnit = (bigFontStyle == 0) ? 3 : 4;
+          display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
         } else {
           // Current in A: two large integer digits + two small fractional digits
           int c_i_tens = m365_info.curh / 10; int c_i_ones = m365_info.curh % 10;
-          if (c_i_tens > 0) drawLargeDigit(X0, yOffset, c_i_tens);
-          drawLargeDigit(X1, yOffset, c_i_ones);
+          auto drawMainDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
+          if (bigFontStyle == 0) {
+            const uint8_t digitW = 14; const uint8_t unitX = 120; const uint8_t gapUnit = 4;
+            uint8_t nDigits = (c_i_tens > 0) ? 2 : 1;
+            int16_t digitsRight = (int16_t)unitX - gapUnit;
+            int16_t startX = digitsRight - digitW - (int16_t)(stepMain) * (nDigits - 1);
+            int idx = 0;
+            if (c_i_tens > 0) { drawMainDigit((uint8_t)(startX + stepMain * idx), yOffset, c_i_tens); idx++; }
+            drawMainDigit((uint8_t)(startX + stepMain * idx), yOffset, c_i_ones);
+          } else {
+            if (c_i_tens > 0) drawMainDigit(X0, yOffset, c_i_tens);
+            drawMainDigit(X1, yOffset, c_i_ones);
+          }
+          // Fractional: position relative to integer area; keep small glyphs for both styles
           int c_f_tens = m365_info.curl / 10; int c_f_ones = m365_info.curl % 10;
-          drawSmallDigit(75, 0, c_f_tens);
-          drawSmallDigit(108, 0, c_f_ones);
-          if ((cur_cA_raw >= 0) || ((cur_cA_raw < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, 4); display.print((const __FlashStringHelper *) l_a); display.set1X(); }
+          uint8_t fx1 = uint8_t(stepMain * 3); uint8_t fx2 = uint8_t(stepMain * 4);
+          if (fx2 > 120) fx2 = 120; if (fx1 > 120) fx1 = 120;
+          drawSmallDigit(fx1, 0, c_f_tens);
+          drawSmallDigit(fx2, 0, c_f_ones);
+          uint8_t ax = uint8_t(fx2 + 20); if (ax > 120) ax = 120;
+          if ((cur_cA_raw >= 0) || ((cur_cA_raw < 0) && (millis() % 1000 < 500))) {
+            display.set2X(); display.setCursor(ax, (bigFontStyle == 0) ? 3 : 4); display.print((const __FlashStringHelper *) l_a); display.set1X();
+          }
         }
         display.setFont(defaultFont); display.set1X();
         if (cur_cA_raw < 0) { display.setCursor(120, 0); display.print('R'); } else { display.setCursor(120, 0); display.print(' '); }
@@ -493,10 +523,16 @@ void displayFSM() {
     auto drawLargeDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawLarge(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
         auto drawSmallDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawSmall(x, y, (uint8_t)d); };
   int sp_tens = m365_info.sph / 10; int sp_ones = m365_info.sph % 10;
-  const uint8_t stepLarge = (bigFontStyle == 0) ? 30 : 24; // widen spacing for MATRIX
+  const uint8_t stepMain = (bigFontStyle == 0) ? 16 : 24; // MATRIX small spacing; SEVENSEG large spacing
   const uint8_t yOffset = (bigFontStyle == 1) ? 2 : 0;
-  if (sp_tens > 0) drawLargeDigit(0, yOffset, sp_tens);
-  drawLargeDigit(stepLarge, yOffset, sp_ones);
+  // MATRIX uses smaller glyphs for speed; SEVENSEG keeps large
+  if (bigFontStyle == 0) {
+    if (sp_tens > 0) OdroidDotMatrix::drawSmall(0, yOffset, (uint8_t)sp_tens);
+    OdroidDotMatrix::drawSmall(stepMain, yOffset, (uint8_t)sp_ones);
+  } else {
+    if (sp_tens > 0) OdroidSevenSeg::drawLarge(0, yOffset, (uint8_t)sp_tens);
+    OdroidSevenSeg::drawLarge(stepMain, yOffset, (uint8_t)sp_ones);
+  }
         drawSmallDigit(75, 0, m365_info.spl);
         display.setCursor(106, 0); display.print((char)0x3A);
 #else
