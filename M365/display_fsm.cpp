@@ -2,6 +2,11 @@
 #include "comms.h"
 #include "battery_display.h"
 #include "aht10.h"
+// Custom ESP32-only big-digit renderers
+#if defined(ARDUINO_ARCH_ESP32)
+#include "fonts/odroid_dotmatrix_u8g2.h"
+#include "fonts/odroid_sevenseg_u8g2.h"
+#endif
 
 // Main display function - handles all screen modes and user input
 void displayFSM() {
@@ -418,7 +423,42 @@ void displayFSM() {
   display.set1X();
     switch (bigMode) {
       case 1: // current/power big mode
-        // Select font per setting: STD = bigNumb @ 1X, DIGIT = segNumb @ 2X
+      {
+#if defined(ARDUINO_ARCH_ESP32)
+        // ESP32: render with MATRIX (dot-matrix) or DIGITAL (seven-seg) blitters
+        auto drawLargeDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawLarge(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
+        auto drawSmallDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawSmall(x, y, (uint8_t)d); };
+  // Style-aware positioning
+  const uint8_t stepLarge = (bigFontStyle == 0) ? 30 : 24; // MATRIX uses 28px wide (2x14) -> give 2px padding
+  const uint8_t X0 = 0, X1 = stepLarge, X2 = uint8_t(stepLarge * 2), X3 = uint8_t(stepLarge * 3);
+  const uint8_t Y0 = 0;
+  const uint8_t yOffset = (bigFontStyle == 1) ? 15 : 3; // move MATRIX up (was 7), keep SEVENSEG baseline alignment
+        if (showPower) {
+          uint16_t W = m365_info.pwh; if (W > 9999) W = 9999;
+          int d0 = (W >= 1000) ? ((W / 1000) % 10) : -1; int d1 = (W >= 100) ? ((W / 100) % 10) : -1; int d2 = (W >= 10) ? ((W / 10) % 10) : -1; int d3 = (W % 10);
+          if (d0 >= 0) drawLargeDigit(X0, Y0 + yOffset, d0);
+          if (d1 >= 0) drawLargeDigit(X1, Y0 + yOffset, d1);
+          if (d2 >= 0) drawLargeDigit(X2, Y0 + yOffset, d2);
+          drawLargeDigit(X3, Y0 + yOffset, d3);
+          // Place unit further right; account for true digit width per style
+          const uint8_t digitW = (bigFontStyle == 0) ? 28 : 17; // MATRIX large=28, SEVENSEG large=17
+          const uint8_t extraPad = (bigFontStyle == 0) ? 12 : 8; // push 'W' more to the right for MATRIX
+          uint8_t ux = X3 + digitW + extraPad; if (ux > 112) ux = 112;
+          uint8_t yUnit = 4; display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
+        } else {
+          // Current in A: two large integer digits + two small fractional digits
+          int c_i_tens = m365_info.curh / 10; int c_i_ones = m365_info.curh % 10;
+          if (c_i_tens > 0) drawLargeDigit(X0, yOffset, c_i_tens);
+          drawLargeDigit(X1, yOffset, c_i_ones);
+          int c_f_tens = m365_info.curl / 10; int c_f_ones = m365_info.curl % 10;
+          drawSmallDigit(75, 0, c_f_tens);
+          drawSmallDigit(108, 0, c_f_ones);
+          if ((cur_cA_raw >= 0) || ((cur_cA_raw < 0) && (millis() % 1000 < 500))) { display.set2X(); display.setCursor(108, 4); display.print((const __FlashStringHelper *) l_a); display.set1X(); }
+        }
+        display.setFont(defaultFont); display.set1X();
+        if (cur_cA_raw < 0) { display.setCursor(120, 0); display.print('R'); } else { display.setCursor(120, 0); display.print(' '); }
+#else
+        // AVR: keep legacy font path to save flash
         if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
         if (showPower) {
           uint16_t W = m365_info.pwh; if (W > 9999) W = 9999;
@@ -426,16 +466,12 @@ void displayFSM() {
           buf[1] = (W >= 100)  ? char('0' + (W / 100) % 10)  : ' ';
           buf[2] = (W >= 10)   ? char('0' + (W / 10) % 10)   : ' ';
           buf[3] = char('0' + (W % 10)); buf[4] = 0;
-          // Translate spaces to ';' (blank glyph) only for DIGIT
           if (bigFontStyle == 1) { for (uint8_t i = 0; i < 3; ++i) if (buf[i] == ' ') buf[i] = (char)0x3B; }
-          if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
-          uint8_t yDigits = (bigFontStyle == 0) ? 0 : 0;
-          display.setCursor(0, yDigits);  display.print(buf[0]);
-          display.setCursor(26, yDigits); display.print(buf[1]);
-          display.setCursor(54, yDigits); display.print(buf[2]);
-          display.setCursor(84, yDigits); display.print(buf[3]);
-          uint8_t ux = display.col(); if (ux > 112) ux = 112;
-          uint8_t yUnit = 4;
+          display.setCursor(0, 0);  display.print(buf[0]);
+          display.setCursor(26, 0); display.print(buf[1]);
+          display.setCursor(54, 0); display.print(buf[2]);
+          display.setCursor(84, 0); display.print(buf[3]);
+          uint8_t ux = display.col(); if (ux > 112) ux = 112; uint8_t yUnit = 4;
           display.setFont(defaultFont); display.setCursor(ux, yUnit); display.set2X(); display.print((const __FlashStringHelper *) l_w); display.set1X();
         } else {
           tmp_0 = m365_info.curh / 10; tmp_1 = m365_info.curh % 10;
@@ -448,15 +484,31 @@ void displayFSM() {
         }
         display.setFont(defaultFont); display.set1X();
         if (cur_cA_raw < 0) { display.setCursor(120, 0); display.print('R'); } else { display.setCursor(120, 0); display.print(' '); }
+#endif
         break;
+      }
       default: // speed big mode
+      {
+#if defined(ARDUINO_ARCH_ESP32)
+    auto drawLargeDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawLarge(x, y, (uint8_t)d); else OdroidSevenSeg::drawLarge(x, y, (uint8_t)d); };
+        auto drawSmallDigit = [&](uint8_t x, uint8_t y, int d){ if (d > 9) return; if (bigFontStyle == 0) OdroidDotMatrix::drawSmall(x, y, (uint8_t)d); else OdroidSevenSeg::drawSmall(x, y, (uint8_t)d); };
+  int sp_tens = m365_info.sph / 10; int sp_ones = m365_info.sph % 10;
+  const uint8_t stepLarge = (bigFontStyle == 0) ? 30 : 24; // widen spacing for MATRIX
+  const uint8_t yOffset = (bigFontStyle == 1) ? 2 : 0;
+  if (sp_tens > 0) drawLargeDigit(0, yOffset, sp_tens);
+  drawLargeDigit(stepLarge, yOffset, sp_ones);
+        drawSmallDigit(75, 0, m365_info.spl);
+        display.setCursor(106, 0); display.print((char)0x3A);
+#else
         if (bigFontStyle == 0) { display.setFont(bigNumb); display.set1X(); } else { display.setFont(segNumb); display.set2X(); }
         tmp_0 = m365_info.sph / 10; tmp_1 = m365_info.sph % 10;
         display.setCursor(2, 0); if (tmp_0 > 0) display.print(tmp_0); else display.print(bigFontStyle == 1 ? (char)0x3B : ' ');
         display.setCursor(32, 0); display.print(tmp_1);
         display.setCursor(75, 0); display.print(m365_info.spl);
         display.setCursor(106, 0); display.print((char)0x3A);
+#endif
         break;
+      }
     }
     showBatt(S25C31.remainPercent, cur_cA_raw < 0);
     showRangeSmall();

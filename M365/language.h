@@ -42,8 +42,8 @@
   const char confScr8[] PROGMEM = {"Save and exit      "};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char confScr12[] PROGMEM = {"Big font: "};
-  const char confScr12a[] PROGMEM = {"  STD   "};
-  const char confScr12b[] PROGMEM = {"DIGITAL"};
+  const char confScr12a[] PROGMEM = {" MATRIX "};
+  const char confScr12b[] PROGMEM = {"SEVENSEG"};
   const char confScr13[] PROGMEM = {"Main temp: "};
   const char confScr13a[] PROGMEM = {"DRV"};
   const char confScr13b[] PROGMEM = {"T1 "};
@@ -131,8 +131,8 @@
   const char confScr8[] PROGMEM = {"Salva e esci"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char confScr12[] PROGMEM = {"Carattere grande: "};
-  const char confScr12a[] PROGMEM = {"  STD"};
-  const char confScr12b[] PROGMEM = {"DIGIT"};
+  const char confScr12a[] PROGMEM = {" MATRIX"};
+  const char confScr12b[] PROGMEM = {"SEVENSEG"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
   const char wifiMenu3[] PROGMEM = {"PASS:"};
@@ -211,8 +211,8 @@
   const char confScr8[] PROGMEM = {"Enregistrer et quitter"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char confScr12[] PROGMEM = {"Grande police: "};
-  const char confScr12a[] PROGMEM = {"  STD"};
-  const char confScr12b[] PROGMEM = {"DIGIT"};
+  const char confScr12a[] PROGMEM = {" MATRIX"};
+  const char confScr12b[] PROGMEM = {"SEVENSEG"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
   const char wifiMenu3[] PROGMEM = {"PASS:"};
@@ -291,8 +291,8 @@
   const char confScr8[] PROGMEM = {"Grabar y salir"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char confScr12[] PROGMEM = {"Fuente grande: "};
-  const char confScr12a[] PROGMEM = {"  STD"};
-  const char confScr12b[] PROGMEM = {"DIGIT"};
+  const char confScr12a[] PROGMEM = {" MATRIX"};
+  const char confScr12b[] PROGMEM = {"SEVENSEG"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
   const char wifiMenu3[] PROGMEM = {"PASS:"};
@@ -371,8 +371,8 @@
   const char confScr8[] PROGMEM = {"Ulozit a odejit"};
   const char confScr10[] PROGMEM = {"WiFi/OTA (ESP32) >"};
   const char confScr12[] PROGMEM = {"Velke pismo: "};
-  const char confScr12a[] PROGMEM = {"  STD"};
-  const char confScr12b[] PROGMEM = {"DIGIT"};
+  const char confScr12a[] PROGMEM = {" MATRIX"};
+  const char confScr12b[] PROGMEM = {"SEVENSEG"};
   const char wifiMenu1[] PROGMEM = {"WiFi AP:         "};
   const char wifiMenu2[] PROGMEM = {"SSID:"};
   const char wifiMenu3[] PROGMEM = {"PASS:"};
