@@ -38,7 +38,7 @@ bool u8g2_int_init(void){
 void u8g2_int_boot_screen(void){
     u8g2_ClearBuffer(&u8g2);
     u8g2_SetFont(&u8g2, u8g2_font_6x12_tr);
-    u8g2_DrawStr(&u8g2, 0,12, "M365 DASH");
+    u8g2_DrawStr(&u8g2, 0,12, "JK's");
     //u8g2_DrawStr(&u8g2, 0,26, "Initializing...");
     u8g2_SendBuffer(&u8g2);
 }

@@ -21,6 +21,12 @@
 #include "range_estimator.h"
 #include "aht10.h"
 
+// Suppress noisy format-truncation warnings for constrained UI formatting
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
+
 // Integrate legacy Arduino numeric font (stdNumb) for nicer large digits.
 // Original header lives under M365/fonts/stdNumb.h. Provide minimal macro so it compiles in C.
 #ifndef GLCDFONTDECL
@@ -84,6 +90,47 @@ static void stdnum_draw_string(u8g2_t *u, int x, int y, const char *s){
         x += g_stdnum.w + 1;
     }
 #endif
+}
+
+// Reusable width helper for std numeric font
+static int stdnum_text_w(const char *s){ int n=0; while(*s){ ++n; ++s; } return n? n*(g_stdnum.w+1)-1 : 0; }
+
+// Draw a large 'C' roughly matching std numeric font height/weight
+static void draw_big_C(u8g2_t *u, int x, int y){
+    int h = g_stdnum.h; // typically 14
+    int thick = 2;      // stroke thickness
+    int innerW = g_stdnum.w - 2; if (innerW < 6) innerW = 6; // approximate width
+    // Top bar
+    for(int dy=0; dy<thick; ++dy){ u8g2_DrawHLine(u, x+1, y+dy, innerW-1); }
+    // Bottom bar
+    for(int dy=0; dy<thick; ++dy){ u8g2_DrawHLine(u, x+1, y + h-1 - dy, innerW-1); }
+    // Left vertical
+    for(int dx=0; dx<thick; ++dx){ u8g2_DrawVLine(u, x+dx, y+thick-1, h - 2*thick +2); }
+    // (Optional) small corner anti-alias pixels (leave open right side)
+}
+
+// Draw a small lowercase unit string (e.g. "km") preserving lowercase using a u8g2 font with lowercase glyphs.
+static u8g2_t *get_u(); // forward declaration
+static void draw_lower_unit(int x, int baselineY, const char *s){
+    u8g2_t *u = get_u();
+    // Choose a tiny readable font (5x8) that has lowercase
+    u8g2_SetFont(u, u8g2_font_5x8_tr);
+    u8g2_DrawStr(u, x, baselineY, s);
+    // No restore needed; std numeric drawing sets pixels directly.
+}
+// Clamp temperature (C or F) to displayable range; 0x7FFF means missing
+static inline int16_t clamp_temp_c(int16_t v){ if (v==0x7FFF) return v; if (v<-99) return -99; if (v>199) return 199; return v; }
+// Draw temperature (signed) with leading space for -9..9 using std numeric font
+static void draw_temp_num(u8g2_t *u,int x,int y,int16_t v){
+    char buf[12];
+    if (v==0x7FFF) {
+        strcpy(buf,"--");
+    } else {
+        int single = (v>-10 && v<10);
+        // Max absolute value after clamp is 199 so buffer of 8 is plenty.
+        if (single) snprintf(buf,sizeof(buf)," %d", (int)v); else snprintf(buf,sizeof(buf),"%d", (int)v);
+    }
+    stdnum_draw_string(u,x,y,buf);
 }
 
 // Battery percent: use raw remainPercent (0..100) only when valid frame received; no voltage fallback
@@ -236,123 +283,67 @@ static void update_big_state(int speedRaw){
 }
 
 static void render_big_screen(int speedRaw){
-    u8g2_ClearBuffer(get_u());
-    ui_settings_t *cfg = settings_ui();
-    int sp = (speedRaw<0?-speedRaw:speedRaw)/100; if (sp>199) sp=199; // integer km/h (legacy scaling)
-    // Simple 16x32 digit bitmaps (0-9) stored row-major, 1bpp, 16 wide => 2 bytes/row *32 rows =64 bytes per glyph
-    // Minimal subset for speed/current/power (digits only). Pattern: top aligned, bold style.
-    static const uint8_t dig16x32[][64] = {
-        // '0'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0F,0xF0,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00},
-        // '1'
-        {0x38,0x00,0x3C,0x00,0x3E,0x00,0x3F,0x00,0x3F,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0xFF,0x3F,0xFF,0x3F,0x00,0x00,
-         0x00,0x00,0x38,0x00,0x3C,0x00,0x3E,0x00,0x3F,0x00,0x3F,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0x3C,0x00,0xFF,0x3F,0xFF,0x3F,0x00,0x00},
-        // '2'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x00,0x70,0x00,0x78,0x00,0x3E,0x80,0x1F,0xE0,0x07,0xF0,0x03,0xF8,0x01,0x1E,0x00,0x0F,0x00,0x07,0x00,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x00,0x70,0x00,0x78,0x00,0x3E,0x80,0x1F,0xE0,0x07,0xF0,0x03,0xF8,0x01,0x1E,0x00,0x0F,0x00,0x07,0x00},
-        // '3'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x00,0x70,0x80,0x7F,0x80,0x7F,0x80,0x7F,0x00,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x00,0x70,0x80,0x7F,0x80,0x7F,0x80,0x7F,0x00,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F},
-        // '4'
-        {0x00,0x1E,0x00,0x1F,0x80,0x1F,0xC0,0x1D,0xE0,0x1C,0x70,0x1C,0x38,0x1C,0x1C,0x1C,0x0E,0x1C,0xFF,0x7F,0xFF,0x7F,0xFF,0x7F,0x0E,0x1C,0x0E,0x1C,0x0E,0x1C,0x00,0x00,
-         0x00,0x00,0x00,0x1E,0x00,0x1F,0x80,0x1F,0xC0,0x1D,0xE0,0x1C,0x70,0x1C,0x38,0x1C,0x1C,0x1C,0x0E,0x1C,0xFF,0x7F,0xFF,0x7F,0xFF,0x7F,0x0E,0x1C,0x0E,0x1C,0x0E,0x1C},
-        // '5'
-        {0xFF,0x3F,0xFF,0x3F,0x0E,0x00,0x0E,0x00,0xFE,0x0F,0xFE,0x3F,0x0E,0x78,0x00,0x70,0x00,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF8,0x1F,0xE0,0x07,0x00,0x00,
-         0x00,0x00,0xFF,0x3F,0xFF,0x3F,0x0E,0x00,0x0E,0x00,0xFE,0x0F,0xFE,0x3F,0x0E,0x78,0x00,0x70,0x00,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF8,0x1F,0xE0,0x07},
-        // '6'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x00,0x8E,0x0F,0xFE,0x3F,0xFE,0x7B,0x0E,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x00,0x8E,0x0F,0xFE,0x3F,0xFE,0x7B,0x0E,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00},
-        // '7'
-        {0xFF,0x7F,0xFF,0x7F,0x00,0x78,0x00,0x3C,0x80,0x1F,0xC0,0x0F,0xE0,0x07,0xF0,0x03,0xF8,0x01,0x1E,0x00,0x0F,0x00,0x07,0x00,0x07,0x00,0x03,0x00,0x03,0x00,0x00,0x00,
-         0x00,0x00,0xFF,0x7F,0xFF,0x7F,0x00,0x78,0x00,0x3C,0x80,0x1F,0xC0,0x0F,0xE0,0x07,0xF0,0x03,0xF8,0x01,0x1E,0x00,0x0F,0x00,0x07,0x00,0x07,0x00,0x03,0x00,0x03,0x00},
-        // '8'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x3F,0xF0,0x0F,0x00,0x00},
-        // '9'
-        {0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x7F,0xF8,0x7F,0xE0,0x70,0xE0,0x70,0x1E,0x70,0xFC,0x3F,0xF0,0x0F,0x00,0x00,0x00,0x00,
-         0x00,0x00,0xF0,0x0F,0xFC,0x3F,0x1E,0x78,0x0E,0x70,0x0E,0x70,0x0E,0x70,0x1E,0x78,0xFC,0x7F,0xF8,0x7F,0xE0,0x70,0xE0,0x70,0x1E,0x70,0xFC,0x3F,0xF0,0x0F,0x00,0x00}
-    };
-    // Pre-compute electrical metrics (current & power) for possible primary/secondary use.
-    int16_t c_cA = protocol_total_current_cA();
-    int cA_abs = c_cA < 0 ? -c_cA : c_cA; 
-    int cur_A = cA_abs / 100;               // integer amps
-    int W = ( (c_cA/100.0f) * (g_S25C31.voltage/100.0f) ); if (W<0) W=-W; if (W>9999) W=9999; // instantaneous Watts
-
-    // Decide primary value based on bigMode:
-    // bigMode 0 => show SPEED (legacy)
-    // bigMode 1 => show CURRENT or POWER (depends on showPower flag)
-    int primaryVal = sp; // default speed
-    if (cfg->bigMode == 1){
-        if (cfg->showPower) primaryVal = W; else primaryVal = cur_A; // choose power or current
-    }
-    // Clamp displayed value range for digit buffer (allow up to 4 digits)
-    if (primaryVal < 0) primaryVal = -primaryVal; // display absolute
-    if (primaryVal > 9999) primaryVal = 9999;
-
-    // Buffer large enough for any int (though we clamp to 0..9999). Larger size silences -Wformat-truncation.
-    char buf[12]; snprintf(buf,sizeof(buf),"%d", primaryVal);
-    int digits = strlen(buf); if (digits<1) digits=1; if (digits>4) digits=4; // safety
-    int totalW = digits * 18 - 2; // 16px glyph +2px spacing
-    int startX = (128 - totalW)/2; int y=0;
-    for(int i=0;i<digits;i++){
-        int d = buf[i]-'0'; if (d<0||d>9) d=0; u8g2_DrawXBMP(get_u(), startX + i*18, y, 16, 32, dig16x32[d]);
-    }
-
-    // Secondary line content differs by mode.
     u8g2_t *u = get_u();
-    u8g2_SetDrawColor(u,1);
-    char line[24];
-    bool voltageValid = (g_S25C31.voltage >= 2000 && g_S25C31.voltage <= 5000);
-    int volt_cV = g_S25C31.voltage; int volt_whole = (volt_cV<0?-volt_cV:volt_cV)/100; int volt_frac = (volt_cV<0?-volt_cV:volt_cV)%100;
+    u8g2_ClearBuffer(u);
+    // --- Large speed ---
+    int speedAbs = speedRaw < 0 ? -speedRaw : speedRaw; // raw in 1/1000 km/h (?) adapt as used elsewhere
+    int sp_whole = speedAbs / 1000; if (sp_whole > 99) sp_whole = 99; int sp_tenths = (speedAbs % 1000)/100;
+    char line[16];
+    snprintf(line,sizeof(line),"%2d.%d", sp_whole, sp_tenths);
+    stdnum_draw_string(u,0,0,line);
+    int right = stdnum_text_w(line);
+    sys57_draw(u, right+2, 0+7, "KMH");
+    // --- Battery percent (top-right) ---
     int pct = get_filtered_percent();
-    int cursorY = 48; // baseline
-    int xOff = 0;
-    if (cfg->bigMode == 0){
-        // Legacy: show power or current first
-        if (cfg->showPower) snprintf(line,sizeof(line),"%4dW", W); else snprintf(line,sizeof(line),"%3dA", cur_A);
-        u8g2_DrawStr(u,0,cursorY,line); xOff = u8g2_GetStrWidth(u,line)+2;
-    } else {
-        // bigMode 1: primary already current/power; show speed small at start
-        snprintf(line,sizeof(line),"%3dK", sp); // simple speed w/ 'K' tag (km/h)
-        u8g2_DrawStr(u,0,cursorY,line); xOff = u8g2_GetStrWidth(u,line)+2;
-    }
-    // Battery percent
-    if (pct>=0){ snprintf(line,sizeof(line),"%3d%%", pct); u8g2_DrawStr(u,xOff,cursorY,line); xOff += u8g2_GetStrWidth(u,line)+2; }
-    else { u8g2_DrawStr(u,xOff,cursorY,"--%%"); xOff += u8g2_GetStrWidth(u,"--%%")+2; }
-    // Voltage
-    if (voltageValid){ snprintf(line,sizeof(line),"%2d.%02dV", volt_whole, volt_frac); u8g2_DrawStr(u,xOff,cursorY,line);} else u8g2_DrawStr(u,xOff,cursorY,"--.--V");
-
-    // Battery bar at bottom (0-100%)
+    char bbuf[16];
     if (pct>=0){
-        int barW = 100; int bx = (128-barW)/2; int by=56; int fill = (pct* (barW-4))/100;
-        u8g2_DrawFrame(u,bx,by,barW,8);
-        u8g2_DrawBox(u,bx+2,by+1,fill,6);
+        if (pct<0) pct=0;
+        if (pct>100) pct=100; // clamp defensively
+        // Format with leading spaces to keep width stable (up to 100%)
+        snprintf(bbuf,sizeof(bbuf),"%3u%%", (unsigned)pct);
+    } else {
+        strcpy(bbuf," --%");
+    }
+    int bLen = (int)strlen(bbuf); sys57_draw(u,128 - bLen*6, 0, bbuf);
+    // --- Voltage (row 2) ---
+    int vAbs = g_S25C31.voltage < 0 ? -g_S25C31.voltage : g_S25C31.voltage; bool vValid = (vAbs >= 2000 && vAbs <= 5000);
+    if (vValid){ int vw=vAbs/100; int vf=vAbs%100; snprintf(line,sizeof(line),"%2d.%02dV",vw,vf);} else strcpy(line,"--.--V");
+    sys57_draw(u, 0, 2*8+1, line);
+    // --- Driver temp (row 3) ---
+    extern volatile bool g_mainTempAFValid; extern volatile int16_t g_mainTempC10_AF;
+    int16_t drv_c10 = g_mainTempAFValid ? g_mainTempC10_AF : g_S23CB0.mainframeTemp; int16_t tdrv = drv_c10/10; tdrv = clamp_temp_c(tdrv);
+    char tbuf[8]; if (tdrv==0x7FFF) strcpy(tbuf,"--"); else snprintf(tbuf,sizeof(tbuf),"%d", (int)tdrv);
+    stdnum_draw_string(u,0,3*8,tbuf); sys57_draw(u,stdnum_text_w(tbuf)+2,3*8+7,"C");
+    // --- Current / Power (row 4) ---
+    ui_settings_t *cfg = settings_ui(); int16_t c_cA = protocol_total_current_cA(); int cAbs = c_cA<0?-c_cA:c_cA; int ch=cAbs/100; int cf=cAbs%100;
+    if (!cfg->showPower) snprintf(line,sizeof(line),"%2d.%02dA", ch, cf); else { int W=(int)(((float)c_cA/100.0f)*((float)g_S25C31.voltage/100.0f)); if (W<0) W=-W; if (W>9999) W=9999; snprintf(line,sizeof(line),"%4dW", W);} 
+    stdnum_draw_string(u,0,4*8,line);
+    // --- Battery bar bottom ---
+    if (pct>=0){
+        int barW=120; int bx=(128-barW)/2; int by=56; int fill=(pct*(barW-4))/100;
+        u8g2_DrawFrame(u,bx,by,barW,8); u8g2_DrawBox(u,bx+2,by+1,fill,6);
     }
 }
 
 static void render_main_screen(int speedRaw){
-    u8g2_ClearBuffer(get_u());
-    u8g2_t *u_verify = get_u();
-    u8g2_SetDrawColor(u_verify, 1);
+    u8g2_t *u = get_u();
+    u8g2_ClearBuffer(u);
     char line[32];
     ui_settings_t *cfg = settings_ui();
     int speedAbs = speedRaw < 0 ? -speedRaw : speedRaw;
     int sp_whole = speedAbs / 1000; if (sp_whole > 99) sp_whole = 99; int sp_tenths = (speedAbs % 1000) / 100;
-    int vAbs = g_S25C31.voltage < 0 ? -g_S25C31.voltage : g_S25C31.voltage;
-    int v_whole = vAbs / 100; int v_frac = vAbs % 100; bool voltageValid = (vAbs >= 2000 && vAbs <= 5000);
-    static bool fontLogOnce=false;
-    // Width helper
-    int stdnum_text_w(const char *s){ int n=0; while(*s){ ++n; ++s; } return n? n*(g_stdnum.w+1)-1 : 0; }
-    // Unit baseline helper
-    void draw_unit_after(int xRight, int yTop, const char *u){ sys57_draw(get_u(), xRight+2, yTop+7, u); }
-
-    // Primary left
-    if (cfg->showVoltageMain){ if (voltageValid) snprintf(line,sizeof(line),"%c%d.%02d", (v_whole<10?' ': (v_whole/10)+'0'), v_whole%10, v_frac); else strcpy(line," 00.00"); }
-    else { snprintf(line,sizeof(line),"%c%d.%d", (sp_whole<10?' ': (sp_whole/10)+'0'), sp_whole%10, sp_tenths); if (speedAbs < 50) strcpy(line," 00.0"); }
-    stdnum_draw_string(get_u(), 0, 0, line);
+    int vAbs = g_S25C31.voltage < 0 ? -g_S25C31.voltage : g_S25C31.voltage; bool voltageValid=(vAbs>=2000 && vAbs<=5000);
+    // Primary (left top) either speed or voltage
+    if (cfg->showVoltageMain){
+        if (voltageValid){ int vw=vAbs/100; int vf=vAbs%100; snprintf(line,sizeof(line),"%d.%02d", vw, vf); }
+        else strcpy(line,"00.00");
+    } else {
+        snprintf(line,sizeof(line),"%c%d.%01d", (sp_whole<10?' ':(sp_whole/10)+'0'), sp_whole%10, sp_tenths);
+        if (speedAbs < 50) strcpy(line," 00.0");
+    }
+    stdnum_draw_string(u,0,0,line);
     int primaryRight = stdnum_text_w(line);
-    draw_unit_after(primaryRight,0, cfg->showVoltageMain?"V":"KMH");
+    sys57_draw(u, primaryRight+2, 0+7, cfg->showVoltageMain?"V":"KMH");
 
     // Temperature large right
     extern volatile bool g_mainTempAFValid; extern volatile int16_t g_mainTempC10_AF;
@@ -364,37 +355,58 @@ static void render_main_screen(int speedRaw){
 #endif
     } }
     int tC=tempC10/10; if(tC<-99)tC=-99; if(tC>99)tC=99; char tbuf[6]; snprintf(tbuf,sizeof(tbuf),"%2d",tC);
-    int tW=stdnum_text_w(tbuf); int tX=128 - tW - 10; if (tX < primaryRight + 8) tX = primaryRight + 8; stdnum_draw_string(get_u(), tX, 0, tbuf); draw_unit_after(tX+tW,0,"C");
-    if(!fontLogOnce){ fontLogOnce=true; printf("[FONTDBG] main primary='%s' t='%s'\n", line, tbuf); }
+    int tW=stdnum_text_w(tbuf); int tX=128 - tW - 14; if (tX < primaryRight + 8) tX = primaryRight + 8; stdnum_draw_string(u, tX, 0, tbuf);
+    // superscript degree + large C (same height as digits)
+    int unitBaseX = tX + tW + 2; int unitBaseY = 0;
+    u8g2_DrawCircle(u, unitBaseX + 2, unitBaseY + 2, 2, U8G2_DRAW_ALL); // degree symbol
+    draw_big_C(u, unitBaseX + 6, unitBaseY); // big 'C'
 
-    // Distance large left (row 2 top=16)
+    // Distance large left (row 2 top=16) fixed 0.00 format (cap 99.99) with leading space for <10 to shift one digit right
     extern volatile uint32_t g_afTripDistance_m;
-    uint32_t mCurrRaw=g_S23CB0.mileageCurrent; // fallback centi-km (0.01 km units)
-    // If AF trip distance present (meters) and reasonable (< 1,000,000 m), convert to 0.01 km units
-    if (g_afTripDistance_m > 0 && g_afTripDistance_m < 1000000UL) {
-        // meters -> km*100 = (m *100)/1000 = m/10
-        mCurrRaw = g_afTripDistance_m / 10U; // integer division
-    }
-    uint32_t m_whole=mCurrRaw/100; uint32_t m_frac=mCurrRaw%100; if(m_whole>9999)m_whole=9999;
-    snprintf(line,sizeof(line),"%4lu.%02lu", (unsigned long)m_whole,(unsigned long)m_frac);
-    stdnum_draw_string(get_u(),0,16,line); draw_unit_after(stdnum_text_w(line),16,"KM");
+    uint32_t mCurrRaw = g_S23CB0.mileageCurrent; // 0.01 km units
+    if (g_afTripDistance_m > 0 && g_afTripDistance_m < 1000000UL) mCurrRaw = g_afTripDistance_m / 10U;
+    uint32_t kmInt = mCurrRaw / 100U; uint32_t hundredths = mCurrRaw % 100U; if (kmInt > 99) kmInt = 99;
+    char distbuf[12];
+    if (kmInt < 10) snprintf(distbuf,sizeof(distbuf)," %1lu.%02lu", (unsigned long)kmInt, (unsigned long)hundredths); else snprintf(distbuf,sizeof(distbuf),"%02lu.%02lu", (unsigned long)kmInt, (unsigned long)hundredths);
+    stdnum_draw_string(u,0,16,distbuf);
+    int distW = stdnum_text_w(distbuf);
+    int unitX = distW + 2; // small gap after digits
+    int unitBaseline = 16 + g_stdnum.h - 1; // align bottom (subscript style)
+    draw_lower_unit(unitX, unitBaseline, "km");
 
     // Ride time large left (row 4 top=32)
-    uint32_t ride_s=g_S23C3A.ridingTime; uint32_t mm=ride_s/60; uint32_t ss=ride_s%60; if(mm>999)mm=999; snprintf(line,sizeof(line),"%03lu:%02lu",(unsigned long)mm,(unsigned long)ss); stdnum_draw_string(get_u(),0,32,line);
+    uint32_t ride_s = g_S23C3A.ridingTime;
+    if (ride_s >= 3600) { uint32_t hh = ride_s / 3600U; if (hh > 99) hh = 99; uint32_t mm = (ride_s / 60U) % 60U; snprintf(line,sizeof(line),"%02lu:%02lu",(unsigned long)hh,(unsigned long)mm); }
+    else { uint32_t mm = ride_s / 60U; if (mm > 99) mm = 99; uint32_t ss = ride_s % 60U; snprintf(line,sizeof(line),"%02lu:%02lu",(unsigned long)mm,(unsigned long)ss); }
+    stdnum_draw_string(u,0,32,line);
 
-    // Current/power large right
+    // Current/power large right with baseline unit (small font) right-aligned
     int16_t c_cA=protocol_total_current_cA(); int cAbs=c_cA<0?-c_cA:c_cA; int cur_h=cAbs/100; int cur_l=cAbs%100;
-    if(!cfg->showPower) snprintf(line,sizeof(line),"%2d.%02dA",cur_h,cur_l); else { int W=(int)(((float)c_cA/100.0f)*((float)g_S25C31.voltage/100.0f)); if(W<0)W=-W; if(W>9999)W=9999; snprintf(line,sizeof(line),"%4dW",W);} 
-    int pw=stdnum_text_w(line); int px=128 - pw -1; stdnum_draw_string(get_u(), px,32,line);
+    char unitBuf[2]; unitBuf[1]='\0';
+    if(!cfg->showPower){
+        snprintf(line,sizeof(line),"%2d.%02d",cur_h,cur_l); unitBuf[0]='A';
+    } else {
+        int Wp=(int)(((float)c_cA/100.0f)*((float)g_S25C31.voltage/100.0f)); if(Wp<0)Wp=-Wp; if(Wp>9999)Wp=9999; snprintf(line,sizeof(line),"%4d",Wp); unitBuf[0]='W';
+    }
+    int pw=stdnum_text_w(line);
+    // Measure unit width using u8g2 font 5x8
+    u8g2_SetFont(u, u8g2_font_5x8_tr);
+    int unitW = u8g2_GetStrWidth(u, unitBuf);
+    int gap = 2;
+    int totalW = pw + gap + unitW;
+    int px = 128 - totalW - 1; if (px < 0) px = 0;
+    stdnum_draw_string(u, px,32,line);
+    int baselineCurr = 32 + g_stdnum.h - 1;
+    draw_lower_unit(px + pw + gap, baselineCurr, unitBuf);
 
-    // Range small (row 6 -> y=6*8+1≈49)
+    // Range small (row 6)
     float rem_km=range_get_estimate_km(); if(rem_km<0)rem_km=0; if(rem_km>999.9f) rem_km=999.9f; uint16_t r_int=(uint16_t)rem_km; uint16_t r_dec=(uint16_t)((rem_km-(float)r_int)*10.0f+0.5f); snprintf(line,sizeof(line),"%3u.%1u",(unsigned)r_int,(unsigned)r_dec);
-    int smallW=strlen(line)*6; int startX=128 - smallW - 12; if(startX<0) startX=0; sys57_draw(get_u(), startX, 6*8+1, line); sys57_draw(get_u(), startX+smallW+2, 6*8+1, "KM");
+    int smallW=strlen(line)*6; int startX=128 - smallW - 12; if(startX<0) startX=0; sys57_draw(u, startX, 6*8+1, line); draw_lower_unit(startX+smallW+2, 6*8+1+7, "km");
 
     // Battery bar bottom + percent small
-    int pct = get_filtered_percent(); u8g2_t *u=get_u(); int percent=pct; if(percent<0)percent=0; if(percent>100)percent=100;
-    const uint8_t baseY=56, segW=4, segH=6, step=5, baseX=5; for(int i=0;i<19;i++){ int x=baseX+i*step; if ((float)19/100*percent>i) u8g2_DrawBox(u,x,baseY+1,segW,segH); else u8g2_DrawFrame(u,x,baseY+1,segW,segH);} 
-    if(pct>=0) snprintf(line,sizeof(line),"%3d%%",pct); else snprintf(line,sizeof(line)," --%%"); int len=strlen(line); sys57_draw(get_u(),128-len*6,7*8+1,line);
+    int pct = get_filtered_percent(); int percent=pct; if(percent<0)percent=0; if(percent>100)percent=100;
+    const uint8_t baseY=56, segW=4, segH=6, step=5, baseX=5; for(int i=0;i<19;i++){ int bx=baseX+i*step; if ((float)19/100*percent>i) u8g2_DrawBox(u,bx,baseY+1,segW,segH); else u8g2_DrawFrame(u,bx,baseY+1,segW,segH);} 
+    if(pct>=0) snprintf(line,sizeof(line),"%3d%%",pct); else snprintf(line,sizeof(line)," --%%"); int len=strlen(line); sys57_draw(u,128-len*6,7*8+1,line);
 }
 
 // ---------- Trip metrics accumulation (invoked each frame) ----------
@@ -408,23 +420,20 @@ static void accumulate_trip_metrics(void){
         s_tripMinVoltage_cV = 0xFFFF; s_tripMaxVoltage_cV = 0;
     }
     uint32_t dt = (pot_s >= s_lastPowerOnTime_s)? (pot_s - s_lastPowerOnTime_s) : 0;
+    // Parity with original Arduino logic: always accumulate using absolute values (no voltage validity gate).
     int16_t cur_cA_raw = protocol_total_current_cA();
-    uint16_t cur_cA_abs = (uint16_t)(cur_cA_raw<0?-cur_cA_raw:cur_cA_raw);
-    uint16_t v_cV = (uint16_t)(g_S25C31.voltage<0?-g_S25C31.voltage:g_S25C31.voltage);
-    bool v_valid = (v_cV >= 3000 && v_cV <= 5000); // ignore obviously invalid / early zeros
-    // Power (centi) => W*100 = (I_cA * V_cV)/100
-    uint32_t P_Wx100 = v_valid ? ((uint32_t)cur_cA_abs * (uint32_t)v_cV + 50)/100 : 0; // rounding only when valid
-    if (dt>0 && v_valid){
-        // Wh*100 += (W*100 * dt)/3600
-        s_tripEnergy_Wh_x100 += (P_Wx100 * dt)/3600UL;
+    uint16_t cur_cA_abs = (uint16_t)(cur_cA_raw < 0 ? -cur_cA_raw : cur_cA_raw); // centi-amps
+    uint16_t v_cV = (uint16_t)(g_S25C31.voltage < 0 ? -g_S25C31.voltage : g_S25C31.voltage); // centi-volts
+    // Power W*100 = (I_cA * V_cV)/100 with rounding (+50)/100
+    uint32_t P_Wx100 = ((uint32_t)cur_cA_abs * (uint32_t)v_cV + 50U) / 100U;
+    if (dt > 0){
+        s_tripEnergy_Wh_x100 += (P_Wx100 * dt) / 3600UL; // Wh*100 += (W*100 * dt)/3600
         s_lastPowerOnTime_s = pot_s;
     }
     if (cur_cA_abs > s_tripMaxCurrent_cA) s_tripMaxCurrent_cA = cur_cA_abs;
     if (P_Wx100 > s_tripMaxPower_Wx100) s_tripMaxPower_Wx100 = P_Wx100;
-    if (v_valid){
-        if (v_cV < s_tripMinVoltage_cV) s_tripMinVoltage_cV = v_cV;
-        if (v_cV > s_tripMaxVoltage_cV) s_tripMaxVoltage_cV = v_cV;
-    }
+    if (v_cV < s_tripMinVoltage_cV) s_tripMinVoltage_cV = v_cV;
+    if (v_cV > s_tripMaxVoltage_cV) s_tripMaxVoltage_cV = v_cV;
 }
 
 // ---------- Alt screen renderers ----------
@@ -433,81 +442,91 @@ static void render_trip_stats_screen(void){
     char buf[32];
     ui_settings_t *cfg = settings_ui();
     // Average Wh/km (distance in centi-km from mileageCurrent)
-    uint32_t dist_km_x100 = g_S23CB0.mileageCurrent; // (km *100)
+    uint32_t dist_km_x100 = g_S23CB0.mileageCurrent; // km*100
     uint16_t avg_whkm_x100 = 0;
     if (dist_km_x100 > 0){
-        uint32_t avg = (s_tripEnergy_Wh_x100 * 100UL)/ dist_km_x100; // (Wh/km)*100
+        uint32_t avg = (s_tripEnergy_Wh_x100 * 100UL) / dist_km_x100; // (Wh/km)*100
         if (avg > 65535UL) avg = 65535UL;
         avg_whkm_x100 = (uint16_t)avg;
     }
     uint16_t av_i = avg_whkm_x100 / 100; uint16_t av_f = avg_whkm_x100 % 100;
-    snprintf(buf,sizeof(buf),"AVG:%3u.%02uWh/km", av_i, av_f);
-    draw_text(0,0,buf);
+    // Row 0: AVG label + value aligned to column ~65px (col 11)
+    draw_text(0,0,"AVG:");
+    snprintf(buf,sizeof(buf),"%3u.%02uWh/km", av_i, av_f); draw_text(11,0,buf);
+    // Row 2: Max current or power
     if (cfg->showPower){
         uint32_t w100 = s_tripMaxPower_Wx100; uint16_t w_i = w100/100; uint16_t w_f = w100%100;
-        snprintf(buf,sizeof(buf),"Pmax:%4u.%02uW", w_i, w_f);
+        draw_text(0,2,"Pmax:");
+        snprintf(buf,sizeof(buf),"%4u.%02uW", w_i, w_f); draw_text(10,2,buf);
     } else {
         uint16_t c_i = s_tripMaxCurrent_cA/100; uint16_t c_f = s_tripMaxCurrent_cA%100;
-        snprintf(buf,sizeof(buf),"Imax:%3u.%02uA", c_i, c_f);
+        draw_text(0,2,"Imax:");
+        snprintf(buf,sizeof(buf),"%3u.%02uA", c_i, c_f); draw_text(10,2,buf);
     }
-    draw_text(0,2,buf);
+    // Row 4: Umin
     uint16_t vmin_i = (s_tripMinVoltage_cV==0xFFFF)?0:(s_tripMinVoltage_cV/100); uint16_t vmin_f = (s_tripMinVoltage_cV==0xFFFF)?0:(s_tripMinVoltage_cV%100);
-    snprintf(buf,sizeof(buf),"Umin:%2u.%02uV", vmin_i, vmin_f); draw_text(0,4,buf);
+    draw_text(0,4,"Umin:");
+    snprintf(buf,sizeof(buf),"%2u.%02uV", vmin_i, vmin_f); draw_text(12,4,buf);
+    // Row 6: Umax
     uint16_t vmax_i = s_tripMaxVoltage_cV/100; uint16_t vmax_f = s_tripMaxVoltage_cV%100;
-    snprintf(buf,sizeof(buf),"Umax:%2u.%02uV", vmax_i, vmax_f); draw_text(0,5,buf);
-    // Energy consumed
-    uint32_t e_wh100 = s_tripEnergy_Wh_x100; uint16_t e_i = e_wh100/100; uint16_t e_f = e_wh100%100;
-    snprintf(buf,sizeof(buf),"E:%4u.%02uWh", e_i, e_f); draw_text(0,7,buf);
+    draw_text(0,6,"Umax:");
+    snprintf(buf,sizeof(buf),"%2u.%02uV", vmax_i, vmax_f); draw_text(12,6,buf);
 }
 
 static void render_odometer_screen(void){
+    // Arduino parity: Only show ODO (total) and power-on time with large numeric font.
     u8g2_ClearBuffer(get_u());
-    char buf[32];
-    // Total mileage (mileageTotal counts 1/1000 km?) replicate Arduino: total/1000 for km, remainder/10 for one decimal
-    uint32_t tot = g_S23CB0.mileageTotal; // raw units same as Arduino
-    uint32_t km_whole = tot / 1000; uint32_t km_tenths = (tot % 1000)/10;
-    snprintf(buf,sizeof(buf),"TOT %4lu.%01luKM", (unsigned long)km_whole, (unsigned long)km_tenths);
-    draw_text(0,0,buf);
-    // Power-on time (seconds -> mm:ss)
-    uint32_t pot = g_S23C3A.powerOnTime; uint32_t mm = pot/60; uint32_t ss = pot%60; if (mm>999) mm=999;
-    snprintf(buf,sizeof(buf),"ON  %03lu:%02lu", (unsigned long)mm, (unsigned long)ss);
-    draw_text(0,2,buf);
-    // Riding time (distinct from power-on)
-    uint32_t rt = g_S23C3A.ridingTime; mm = rt/60; ss = rt%60; if (mm>999) mm=999;
-    snprintf(buf,sizeof(buf),"RID %03lu:%02lu", (unsigned long)mm, (unsigned long)ss);
-    draw_text(0,4,buf);
-    // Current trip distance
-    uint32_t dist = g_S23CB0.mileageCurrent; uint32_t d_whole = dist/100; uint32_t d_frac = dist%100;
-    snprintf(buf,sizeof(buf),"TRP %4lu.%02luKM", (unsigned long)d_whole, (unsigned long)d_frac);
-    draw_text(0,6,buf);
+    uint32_t tot = g_S23CB0.mileageTotal; // same raw units (1/1000 km)
+    uint32_t km_whole = tot / 1000U; uint32_t km_tenths = (tot % 1000U) / 10U; // one decimal
+    // Build fixed-width 4-digit field with one decimal; leading spaces to stabilize layout
+    char odoDigits[16]; snprintf(odoDigits, sizeof(odoDigits), "%4lu.%01lu", (unsigned long)km_whole, (unsigned long)km_tenths);
+    // Label row (small font) at top left
+    draw_text(0,0,"ODO:");
+    // Draw large odo value starting at y=8 (row 1). Position roughly after label (x=24 px)
+    int odoX = 24; stdnum_draw_string(get_u(), odoX, 8, odoDigits);
+    int odoRight = odoX + stdnum_text_w(odoDigits);
+    // Unit "KM" in small font baseline aligned with large digits (use +7)
+    sys57_draw(get_u(), odoRight + 2, 8+7, "KM");
+    // Power-on time (total powered seconds) below: label row 5, digits row 6 like Arduino
+    uint32_t pot = g_S23C3A.powerOnTime; uint32_t mm = pot/60U; uint32_t ss = pot%60U; if (mm>999) mm=999; 
+    char timeDigits[12]; snprintf(timeDigits, sizeof(timeDigits), "%3lu:%02lu", (unsigned long)mm, (unsigned long)ss);
+    draw_text(0,5,"ON:");
+    // Large time digits at x=25 (~align with Arduino cursor 25) and y=6*8
+    stdnum_draw_string(get_u(), 25, 6*8, timeDigits);
 }
 
 static void render_temps_screen(void){
-    u8g2_ClearBuffer(get_u());
-    char buf[24];
+    u8g2_t *u = get_u();
+    u8g2_ClearBuffer(u);
     extern volatile bool g_mainTempAFValid; extern volatile int16_t g_mainTempC10_AF; extern volatile bool g_batteryDataValid;
-    // Driver/controller temp: prefer AF decoded temp if valid, else fallback to legacy mainframeTemp (already c10)
-    int16_t drv_c10 = g_mainTempAFValid ? g_mainTempC10_AF : g_S23CB0.mainframeTemp; // c10
-    int16_t tdrv = drv_c10 / 10; if (tdrv < -99) tdrv = -99; if (tdrv > 199) tdrv = 199;
-    int16_t t1 = g_batteryDataValid ? g_S25C31.temp1 : 0x7FFF; // sentinel invalid when battery frame missing
-    int16_t t2 = g_batteryDataValid ? g_S25C31.temp2 : 0x7FFF;
-    if (t1 != 0x7FFF && (t1 < -99 || t1 > 199)) t1 = (t1 < -99)? -99 : 199;
-    if (t2 != 0x7FFF && (t2 < -99 || t2 > 199)) t2 = (t2 < -99)? -99 : 199;
-    snprintf(buf,sizeof(buf),"DRV:%3dC", tdrv); draw_text(0,0,buf);
-    if (t1 == 0x7FFF) draw_text(0,2,"B1 : --C"); else { snprintf(buf,sizeof(buf),"B1 :%3dC", t1); draw_text(0,2,buf); }
-    if (t2 == 0x7FFF) draw_text(0,3,"B2 : --C"); else { snprintf(buf,sizeof(buf),"B2 :%3dC", t2); draw_text(0,3,buf); }
-    // Show voltage + current/power snapshot at bottom
-    int16_t cur_cA = protocol_total_current_cA(); int curAbs = cur_cA<0?-cur_cA:cur_cA; int cur_i = curAbs/100; int cur_f = curAbs%100;
-    uint16_t v_cV = (uint16_t)(g_S25C31.voltage<0?-g_S25C31.voltage:g_S25C31.voltage); uint16_t v_i = v_cV/100; uint16_t v_f = v_cV%100;
-    snprintf(buf,sizeof(buf),"%2u.%02uV %2d.%02dA", v_i, v_f, cur_i, cur_f); draw_text(0,5,buf);
+    int16_t drv_c10 = g_mainTempAFValid ? g_mainTempC10_AF : g_S23CB0.mainframeTemp; int16_t tdrv = drv_c10/10;
+    int16_t t1 = g_batteryDataValid ? (int16_t)g_S25C31.temp1 : 0x7FFF;
+    int16_t t2 = g_batteryDataValid ? (int16_t)g_S25C31.temp2 : 0x7FFF;
 #if CFG_AHT10_ENABLE
-    extern bool g_ahtPresent; extern float g_ahtTempC;
-    if(g_ahtPresent && !isnan(g_ahtTempC)){
-        int amb=(int)lrintf(g_ahtTempC);
-        if(amb<-99) amb=-99; if(amb>199) amb=199;
-        snprintf(buf,sizeof(buf),"AMB:%3dC", amb); draw_text(0,7,buf);
-    } else {
-        draw_text(0,7,"AMB: --C");
+    extern bool g_ahtPresent; extern float g_ahtTempC; extern float g_ahtHum;
+    int haveAmb = (g_ahtPresent && !isnan(g_ahtTempC));
+    int16_t amb = haveAmb ? (int16_t)lrintf(g_ahtTempC) : 0x7FFF;
+    uint16_t rh = haveAmb && !isnan(g_ahtHum) ? (uint16_t)lrintf(g_ahtHum) : 0xFFFF; if (rh>100) rh=100;
+#endif
+    // Always display Celsius (US_Version removed)
+    t1=clamp_temp_c(t1); t2=clamp_temp_c(t2); tdrv=clamp_temp_c(tdrv);
+#if CFG_AHT10_ENABLE
+    amb=clamp_temp_c(amb);
+#endif
+    sys57_draw(u,0,0,"BATT");
+    draw_temp_num(u,0,8,t1);
+    sys57_draw(u,(g_stdnum.w+1)*3,8,"C");
+    draw_temp_num(u,87,8,t2);
+    sys57_draw(u,87 + (g_stdnum.w+1)*3,8,"C");
+    sys57_draw(u,0,5*8,"DRV"); draw_temp_num(u,0,6*8,tdrv);
+    sys57_draw(u,(g_stdnum.w+1)*3,6*8,"C");
+#if CFG_AHT10_ENABLE
+    if (haveAmb){
+    sys57_draw(u,64,3*8,"Amb:"); draw_temp_num(u,87,3*8,amb);
+    sys57_draw(u,87 + (g_stdnum.w+1)*3,3*8,"C");
+        sys57_draw(u,64,6*8,"RH:");
+        if (rh!=0xFFFF){ char rbuf[6]; snprintf(rbuf,sizeof(rbuf),"%u", (unsigned)rh); stdnum_draw_string(u,87,6*8,rbuf); sys57_draw(u,87 + (g_stdnum.w+1)*((rh<10)?1:(rh<100?2:3))+2,6*8,"%"); }
+        else sys57_draw(u,87,6*8,"--%");
     }
 #endif
 }
@@ -758,7 +777,6 @@ static void render_boot_pacman(){
 
     // Delta time for smooth motion irrespective of frame jitter
     uint32_t dt = now - s_bootLastFrameMs; if (dt > 100) dt = 100; // clamp (suspend / break)
-    s_bootLastFrameMs = now;
 
     // Horizontal speed: traverse screen width + sprite width over full animation time
     const float totalDistance = 128.f + 16.f; // start off-screen left to off-screen right
@@ -978,3 +996,6 @@ void display_port_start(void){
     xTaskCreatePinnedToCore(display_task, "disp", 4096, NULL, 4, NULL, 0);
 }
 #endif // SIMPLE_DISPLAY_FALLBACK
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
