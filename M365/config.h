@@ -48,7 +48,7 @@
 #define CFG_WARN_BATTERY_PERCENT_DEFAULT 5
 #endif
 #ifndef CFG_AUTOBIG_DEFAULT
-#define CFG_AUTOBIG_DEFAULT true
+#define CFG_AUTOBIG_DEFAULT false
 #endif
 #ifndef CFG_BIGMODE_DEFAULT
 #define CFG_BIGMODE_DEFAULT 1        // 0=speed, 1=current/power
@@ -91,11 +91,25 @@
 #endif
 
 // ESP32 UART pins for Xiaomi port (ignored on AVR)
+// ---------------------------------------------------------------------------
+// M365 UART default pins
+// Classic ESP32 boards commonly use GPIO16 (RX) / GPIO17 (TX) for UART1.
+// ESP32-C3 Super Mini does NOT expose 16/17, so we remap to GPIO4 (RX) / GPIO5 (TX).
+// Users can still override by defining M365_UART_RX_PIN / M365_UART_TX_PIN at build time.
+// ---------------------------------------------------------------------------
 #ifndef M365_UART_RX_PIN
-#define M365_UART_RX_PIN 16
+	#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(ARDUINO_ESP32C3_DEV)
+		#define M365_UART_RX_PIN 20
+	#else
+		#define M365_UART_RX_PIN 16
+	#endif
 #endif
 #ifndef M365_UART_TX_PIN
-#define M365_UART_TX_PIN 17
+	#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(ARDUINO_ESP32C3_DEV)
+		#define M365_UART_TX_PIN 21
+	#else
+		#define M365_UART_TX_PIN 17
+	#endif
 #endif
 
 // =========================

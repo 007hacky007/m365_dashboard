@@ -2,8 +2,8 @@
 
 [wokwi]
 version = 1
-firmware = "../build-local/ESP32-C3-Dev-SIM/M365.ino.bin"   # or "build/M365.ino.bin"
-elf      = "../build-local/ESP32-C3-Dev-SIM/M365.ino.elf"   # optional but speeds things up
+firmware = "../esp-idf/build/m365_dash_idf.bin"   # or "build/M365.ino.bin"
+elf = "../esp-idf/build/m365_dash_idf.elf"   # or "build/M365.ino.bin"
 
 [arduino]
 fqbn = "esp32:esp32:esp32c3"

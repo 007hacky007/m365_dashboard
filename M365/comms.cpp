@@ -38,6 +38,13 @@ void dataFSM() {
         if (readCounter <= sizeof(AnswerHeader)) {
           *asPtr++ = bt;
           _cs -= bt;
+          // Early sanity: if reported length already exceeds our buffer, abort frame
+          if (readCounter == sizeof(AnswerHeader)) {
+            if (AnswerHeader.len > (RECV_BUFLEN - 4)) { // payload + hdr(4) would overflow
+              step = 2; // drop frame
+              break;
+            }
+          }
         }
         if (readCounter > sizeof(AnswerHeader)) {
           *bufPtr++ = bt;
@@ -51,6 +58,20 @@ void dataFSM() {
         ipcs = (uint16_t*)(bufPtr-2);
         cs = *ipcs;
         if(cs != _cs) { step = 2; break; }
+  // Debug: dump frame header + limited payload (first 16 bytes) over USB Serial if available
+#if defined(ARDUINO_ARCH_ESP32)
+  if (Serial) {
+    Serial.print("[BUS] addr="); Serial.print(AnswerHeader.addr, HEX);
+    Serial.print(" cmd="); Serial.print(AnswerHeader.cmd, HEX);
+    Serial.print(" hz="); Serial.print(AnswerHeader.hz, HEX);
+    Serial.print(" len="); Serial.print(AnswerHeader.len);
+    Serial.print(" raw=");
+    uint8_t toShow = AnswerHeader.len < 16 ? AnswerHeader.len : 16;
+    uint8_t *pDump = _bufPtr;
+    for (uint8_t i=0;i<toShow;i++) { Serial.print(pDump[i], HEX); Serial.write(i+1==toShow?' ':' '); }
+    Serial.println();
+  }
+#endif
         processPacket(_bufPtr, readCounter);
         step = 2;
         break;
@@ -68,6 +89,9 @@ void processPacket(uint8_t* data, uint8_t len) {
   uint8_t RawDataLen;
   RawDataLen = len - sizeof(AnswerHeader) - 2;
 
+  // Global sanity guard: reject clearly impossible lengths
+  if (RawDataLen > (RECV_BUFLEN - 4)) return; // would not fit in our capture buffer anyway
+
   switch (AnswerHeader.addr) {
     case 0x20:
       switch (AnswerHeader.cmd) {
@@ -76,8 +100,10 @@ void processPacket(uint8_t* data, uint8_t len) {
             case 0x64:
               break;
             case 0x65:
-              if (_Query.prepared == 1 && !_Hibernate) writeQuery();
-              memcpy((void*)& S20C00HZ65, (void*)data, RawDataLen);
+              if (RawDataLen == sizeof(A20C00HZ65)) {
+                if (_Query.prepared == 1 && !_Hibernate) writeQuery();
+                memcpy((void*)& S20C00HZ65, (void*)data, RawDataLen);
+              }
               break;
             default:
               break;
@@ -145,6 +171,9 @@ void processPacket(uint8_t* data, uint8_t len) {
   for (uint8_t i = 0; i < sizeof(_commandsWeWillSend); i++)
     if (AnswerHeader.cmd == pgm_read_byte_near(&_q[_commandsWeWillSend[i]])) {
       _NewDataFlag = 1;
+      uint32_t now = millis();
+      g_lastBusDataMs = now;
+      if (!g_busEverSeen) { g_busEverSeen = true; g_firstBusDataMs = now; }
       break;
     }
 }

@@ -52,7 +52,10 @@ If you prefer using a current IDE instead of the old 1.6.6, this sketch builds f
 ### ESP32 notes
 
 - UART pins
-  - By default the sketch uses UART1 with RX=GPIO16 and TX=GPIO17 for the scooter BUS.
+  - Default UART pins:
+    - Classic ESP32: UART1 RX=GPIO16, TX=GPIO17
+    - ESP32-C3 (Super Mini): RX=GPIO4, TX=GPIO5 (16/17 not present)
+  - Override with build flags: `-DM365_UART_RX_PIN=<pin> -DM365_UART_TX_PIN=<pin>`
   - To change pins, define these macros before including `defines.h` or add them to the build:
     - `M365_UART_NUM` (default 1), `M365_UART_RX_PIN`, `M365_UART_TX_PIN`.
 
@@ -60,7 +63,10 @@ If you prefer using a current IDE instead of the old 1.6.6, this sketch builds f
   - The sketch handles `EEPROM.begin()`/`commit()` internally; no extra steps are needed.
 
 - Display
-  - I2C works on ESP32’s default SDA/SCL (GPIO21/22 on many boards). If you wired differently, set pins before `Wire.begin()` or rewire to defaults.
+  - I2C:
+    - Classic ESP32 dev boards: SDA=21, SCL=22 (default if not specified)
+    - ESP32-C3 Super Mini (in code): SDA=8, SCL=9 are started explicitly in `setup()`
+    - Change by calling `Wire.begin(newSDA, newSCL);` before `oledInit(false);`
 
 #### ESP32 WiFi AP + OTA update (optional)
 

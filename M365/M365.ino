@@ -86,8 +86,33 @@ void WDTint_() {
 // ============================================================================
 
 void setup() {
+#if defined(ARDUINO_ARCH_ESP32)
+  // USB Serial for debugging (independent of scooter UART)
+  Serial.begin(115200);
+  delay(120);
+  esp_reset_reason_t rr = esp_reset_reason();
+  auto rrStr = [](esp_reset_reason_t r)->const char* {
+    switch(r){
+      case ESP_RST_POWERON: return "POWERON";
+      case ESP_RST_EXT: return "EXT";
+      case ESP_RST_SW: return "SW";
+      case ESP_RST_PANIC: return "PANIC";
+      case ESP_RST_INT_WDT: return "INT_WDT";
+      case ESP_RST_TASK_WDT: return "TASK_WDT";
+      case ESP_RST_WDT: return "OTHER_WDT";
+      case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+      case ESP_RST_BROWNOUT: return "BROWNOUT";
+      case ESP_RST_SDIO: return "SDIO";
+      default: return "UNKNOWN";
+    }
+  };
+  Serial.printf("\n[BOOT] Reset reason: %d (%s)\n", (int)rr, rrStr(rr));
+#endif
   // Initialize serial communication with M365 scooter at 115200 baud
   SERIAL_BEGIN(115200);
+#if defined(ARDUINO_ARCH_ESP32)
+  SERIAL_POSTCONFIG; // apply optional TX inversion if BUS_TX_INVERT defined
+#endif
 
 #if defined(ARDUINO_ARCH_AVR) && defined(SIM_MODE)
   // In Wokwi/Nano simulation, disable hardware WDT if previously enabled
@@ -153,6 +178,13 @@ void setup() {
   // INITIALIZE DISPLAY
   // ============================================================================
   
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(ARDUINO_ESP32C3_DEV)
+  // Explicitly start I2C on ESP32-C3 Super Mini default wiring (SDA=8, SCL=9)
+  // before any device probes inside oledInit()/aht10Init(). If user overrides
+  // they can still call Wire.begin(...) earlier in a fork.
+  Wire.begin(8, 9);
+#endif
+
   oledInit(false); // Centralized OLED init (no splash/logo here)
   // Initialize range estimator after EEPROM is ready and before loop
   rangeInit();

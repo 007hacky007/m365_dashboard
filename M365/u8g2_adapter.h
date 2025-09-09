@@ -6,9 +6,22 @@
 
 class U8g2DisplayAdapter {
 public:
-  // Construct for I2C 128x64 SSD1306. We use hardware I2C by default.
+#ifdef DISPLAY_USE_SW_I2C
+  // Software (bit-bang) I2C variant (helps isolate HW I2C driver issues). Older U8g2 versions
+  // don't have a bitrate parameter in the SW constructor, so use the 4-arg form.
+  #ifndef DISPLAY_SW_I2C_SDA
+    #define DISPLAY_SW_I2C_SDA 8
+  #endif
+  #ifndef DISPLAY_SW_I2C_SCL
+    #define DISPLAY_SW_I2C_SCL 9
+  #endif
+  U8g2DisplayAdapter()
+  : u8g2(U8G2_R0, /* clock=*/ DISPLAY_SW_I2C_SCL, /* data=*/ DISPLAY_SW_I2C_SDA, /* reset=*/ U8X8_PIN_NONE) {}
+#else
+  // Hardware I2C variant
   U8g2DisplayAdapter()
   : u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE) {}
+#endif
 
   // begin() signature variants used by existing code
   void begin(const void* /*driver*/, uint8_t i2cAddr) {
@@ -101,7 +114,11 @@ public:
   void displayRemap(bool /*v*/) {}
 
 private:
+#ifdef DISPLAY_USE_SW_I2C
+  U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2;
+#else
   U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2; // full buffer for simplicity
+#endif
   int16_t _xpx = 0;    // current X in pixels
   uint8_t _rowPage = 0; // current Y page (0..7), each page is 8px high
   uint8_t _scale = 1; // only affects default font

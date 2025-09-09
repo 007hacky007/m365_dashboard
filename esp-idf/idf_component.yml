@@ -1,0 +1,5 @@
+dependencies:
+  u8g2-hal-esp-idf:
+    git: https://github.com/mkfrey/u8g2-hal-esp-idf.git
+    version: "*"
+    submodules: true

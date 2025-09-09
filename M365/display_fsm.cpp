@@ -761,4 +761,58 @@ void displayFSM() {
   }
   showBatt(S25C31.remainPercent, cur_cA_raw < 0);
   showRangeSmall();
+  
+  // -------------------------------------------------------------------------
+  // BUS inactivity overlay (non-SIM). Draw AFTER main content so it appears
+  // as a popup frame. Conditions:
+  //  - No simulator (SIM_MODE not defined)
+  //  - Either we've never seen data and uptime > 1500ms, OR last frame older than threshold
+  //  - Threshold scales: show seconds counter (since first attempt or since last data)
+  // -------------------------------------------------------------------------
+#if !defined(SIM_MODE)
+  {
+    const uint32_t now = millis();
+  const uint32_t NO_FIRST_THRESHOLD = 2000;   // delay before showing initially (was 1500)
+  const uint32_t STALE_THRESHOLD    = 2000;   // ms gap after last frame (was 750)
+    bool showOverlay = false;
+    uint32_t deltaMs = 0;
+    if (!g_busEverSeen) {
+      if (now > NO_FIRST_THRESHOLD) { showOverlay = true; deltaMs = now; }
+    } else {
+      uint32_t last = g_lastBusDataMs; if (last == 0) last = now; // safety
+      uint32_t gap = now - last;
+      if (gap > STALE_THRESHOLD) { showOverlay = true; deltaMs = gap; }
+    }
+    if (showOverlay) {
+  // Character-grid centered window: 12 cols x 4 rows
+  const uint8_t COLS = 12;           // characters (12*8 = 96px)
+  const uint8_t ROWS = 4;            // characters (4*8 = 32px)
+  const uint8_t TOTAL_COLS = 128/8;  // 16
+  const uint8_t TOTAL_ROWS = 64/8;   // 8
+  const uint8_t xChar = (TOTAL_COLS - COLS) / 2; // 2
+  const uint8_t yChar = (TOTAL_ROWS - ROWS) / 2; // 2
+  const uint8_t x = xChar * 8;
+  const uint8_t y = yChar * 8;
+  const uint8_t w = COLS * 8;
+  const uint8_t h = ROWS * 8;
+
+#if defined(ARDUINO_ARCH_ESP32)
+  // Clear background area (black) then draw frame and header bar
+  display.setDrawColor(0); display.drawBox(x, y, w, h); // opaque background
+  display.setDrawColor(1); display.drawFrame(x, y, w, h);
+  display.drawBox(x, y, w, 8); // header bar (exact 1 text row)
+#endif
+  display.setFont(defaultFont);
+  // Header text (center-ish inside header bar)
+  display.setCursor(xChar + 20, yChar); display.print("BUS");
+  // Body lines
+  display.setCursor(xChar + 20, yChar + 1); display.print("no data");
+  float secs = (float)deltaMs / 1000.0f; if (secs > 99.9f) secs = 99.9f;
+  char buf[12]; snprintf(buf, sizeof(buf), "%.1fs", secs);
+  display.setCursor(xChar + 30, yChar + 2); display.print(buf);
+  // leave last row empty for spacing / future info
+    }
+  }
+#endif // !SIM_MODE
+
 }

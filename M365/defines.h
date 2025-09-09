@@ -209,6 +209,10 @@ inline void displayCommit() {
   #include <WiFi.h>
   #include <WebServer.h>
   #include <Update.h>
+  #ifdef BUS_TX_INVERT
+  // Use low-level driver API for TX inversion (UART1 = Serial1)
+  #include "driver/uart.h"
+  #endif
   #define XIAOMI_PORT Serial1
   #ifndef M365_UART_RX_PIN
     #define M365_UART_RX_PIN 16
@@ -217,6 +221,12 @@ inline void displayCommit() {
     #define M365_UART_TX_PIN 17
   #endif
   #define SERIAL_BEGIN(baud) XIAOMI_PORT.begin((baud), SERIAL_8N1, M365_UART_RX_PIN, M365_UART_TX_PIN)
+  // Optional TX inversion (for NPN open-collector interface without diode). Define BUS_TX_INVERT before including this header.
+  #ifdef BUS_TX_INVERT
+  #define SERIAL_POSTCONFIG do { uart_set_line_inverse(UART_NUM_1, UART_SIGNAL_TXD_INV); } while(0)
+  #else
+    #define SERIAL_POSTCONFIG do {} while(0)
+  #endif
   // Expose OTA globals from main sketch
   extern WebServer otaServer;
   extern bool otaRunning;
@@ -293,8 +303,16 @@ struct QUERY_t { uint8_t prepared, DataLen; uint8_t buf[16]; uint16_t cs; uint8_
 
 #ifdef M365_DEFINE_GLOBALS
   volatile uint8_t _NewDataFlag = 0; volatile bool _Hibernate = false;
+  volatile uint32_t g_lastBusDataMs = 0;
+  volatile uint32_t g_firstBusDataMs = 0;
+  volatile bool g_busEverSeen = false;
 #else
   extern volatile uint8_t _NewDataFlag; extern volatile bool _Hibernate;
+  // BUS activity tracking (ESP32/AVR): updated on each valid scooter frame
+  // Used for on-screen BUS inactivity overlay
+  extern volatile uint32_t g_lastBusDataMs;
+  extern volatile uint32_t g_firstBusDataMs;
+  extern volatile bool g_busEverSeen;
 #endif
 
 enum {CMD_CRUISE_ON, CMD_CRUISE_OFF, CMD_LED_ON, CMD_LED_OFF, CMD_WEAK, CMD_MEDIUM, CMD_STRONG};

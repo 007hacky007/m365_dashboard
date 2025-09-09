@@ -1,3 +1,41 @@
 .DS_Store
 build-local/
 .vscode/
+
+# ESP-IDF build output
+esp-idf/build/
+esp-idf/sdkconfig.old
+esp-idf/sdkconfig.defaults
+
+# CMake / Ninja user-specific cache outside default build dir (if any)
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/compile_commands.json
+
+# Esptool / flash args auto-generated
+esp-idf/**/flash_args
+esp-idf/**/flash_args.in
+esp-idf/**/flasher_args.json
+esp-idf/**/app-flash_args
+esp-idf/**/bootloader-flash_args
+
+# Python virtual environments (if created locally for IDF)
+.venv/
+venv/
+
+# Crash dumps / core dumps
+core.*
+*.core
+
+# Debug / trace
+trace*
+
+# VSCode IDF extension generated
+.idf-env.json
+esp-idf/.project
+
+# macOS extras
+._*
+*.swp
+*.swo

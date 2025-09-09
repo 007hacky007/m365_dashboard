@@ -39,5 +39,10 @@
     [ "stat:2", "esp32:10", "gray" ],
     [ "stat:1", "esp32:GND", "black" ]
   ],
-  "dependencies": {}
+  "dependencies": {},
+    "serialMonitor": {
+    "display": "auto",
+    "newline": "lf",
+    "convertEol": false
+  }
 }
