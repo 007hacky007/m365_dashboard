@@ -210,9 +210,15 @@ static uint16_t s_tripMaxCurrent_cA = 0;       // centi-amps
 static uint32_t s_tripMaxPower_Wx100 = 0;      // W *100
 static uint16_t s_tripMinVoltage_cV = 0xFFFF;  // centi-volts
 static uint16_t s_tripMaxVoltage_cV = 0;       // centi-volts
-// Legacy compatibility: some stale builds referenced variable 'durMs'. It mapped to last throttle press duration.
-// If needed again, uncomment macro below (kept as comment to avoid non-constant initializer issues at file scope).
-// #define durMs s_throttleLastDurationMs
+// Legacy compatibility macro (disabled): #define durMs s_throttleLastDurationMs
+// Provide a legacy alias variable (uninitialized so it resolves to 0) for any
+// stale build system or conditional code path still expecting a file-scope
+// symbol named durMs. We intentionally do NOT initialize it from
+// s_throttleLastDurationMs because that is not a constant expression and
+// previously triggered: "initializer element is not constant" when a stale
+// copy attempted `= s_throttleLastDurationMs`. Runtime code (if any) should use
+// s_throttleLastDurationMs directly; this variable is kept only as a safety net.
+static uint32_t durMs __attribute__((unused));
 
 // Forward decls for alt screens
 static void render_trip_stats_screen(void);
@@ -562,16 +568,16 @@ static void handle_screen_cycle(int speedRaw){
     // the raw state to be stable for the debounce interval before committing the
     // logical pressed/released state used for navigation.
 #ifndef THROTTLE_PRESS_DEBOUNCE_MS
-#define THROTTLE_PRESS_DEBOUNCE_MS   40   // reduced from 100 to catch quick taps
+#define THROTTLE_PRESS_DEBOUNCE_MS   25   // faster screen cycle activation (was 40)
 #endif
 #ifndef THROTTLE_RELEASE_DEBOUNCE_MS
-#define THROTTLE_RELEASE_DEBOUNCE_MS 250  // reduced from 600 to allow faster re-press
+#define THROTTLE_RELEASE_DEBOUNCE_MS 45  // faster re-press (was 250)
 #endif
 #ifndef BRAKE_PRESS_DEBOUNCE_MS
-#define BRAKE_PRESS_DEBOUNCE_MS      40
+#define BRAKE_PRESS_DEBOUNCE_MS      25
 #endif
 #ifndef BRAKE_RELEASE_DEBOUNCE_MS
-#define BRAKE_RELEASE_DEBOUNCE_MS    60
+#define BRAKE_RELEASE_DEBOUNCE_MS    45
 #endif
 
     uint32_t nowMs = millis();
@@ -691,7 +697,8 @@ static void handle_screen_cycle(int speedRaw){
     } else {
         s_stationarySince = 0; // reset when movement resumes
     }
-    const uint32_t STATIONARY_HOLD_MS = 3000; // 3 seconds requirement
+    // Shorter stationary requirement to allow quicker screen cycling (was 3000 ms)
+    const uint32_t STATIONARY_HOLD_MS = 2000; // 1.2s requirement
     bool allowScreenCycle = (s_stationarySince != 0) && (nowMs - s_stationarySince >= STATIONARY_HOLD_MS);
 
     if (stationary && allowScreenCycle){
