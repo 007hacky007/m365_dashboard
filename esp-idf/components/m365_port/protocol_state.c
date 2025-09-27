@@ -342,37 +342,9 @@ void protocol_process_packet(const uint8_t *frameBuf, uint8_t totalLen, uint32_t
             }
             break;
         case 0x23: // speed / mileage etc
-            if (g_AnswerHeader.cmd == 0xB0) {
-                if (rawLen == sizeof(A23CB0)) {
-                    memcpy(&g_S23CB0, frameBuf, rawLen);
-                } else if (rawLen >= 22) {
-                    // Accept shorter variant (some firmwares omit trailing reserved bytes).
-                    // Offsets: 0-9 u1[10], 10-11 speed, 12-13 avg, 14-17 mileageTotal, 18-19 mileageCurrent, 20-21 elapsedPowerOnTime, 22-23 mainframeTemp (needs >=24)
-                    const uint8_t *p = frameBuf;
-                    if (rawLen >= 12) g_S23CB0.speed = (int16_t)( (uint16_t)p[10] | ((uint16_t)p[11] << 8));
-                    if (rawLen >= 14) g_S23CB0.averageSpeed = (uint16_t)p[12] | ((uint16_t)p[13] << 8);
-                    if (rawLen >= 18) g_S23CB0.mileageTotal = ((uint32_t)p[14] << 24) | ((uint32_t)p[15] << 16) | ((uint32_t)p[16] << 8) | (uint32_t)p[17];
-                    if (rawLen >= 20) g_S23CB0.mileageCurrent = (uint16_t)p[18] | ((uint16_t)p[19] << 8);
-                    if (rawLen >= 22) g_S23CB0.elapsedPowerOnTime = (uint16_t)p[20] | ((uint16_t)p[21] << 8);
-                    if (rawLen >= 24) g_S23CB0.mainframeTemp = (int16_t)((uint16_t)p[22] | ((uint16_t)p[23] << 8));
-#if M365_DECODE_DEBUG
-                    static int onceB0=0; if(!onceB0){ onceB0=1; printf("[B0-PARTIAL] Accepted partial 0xB0 frame rawLen=%u (<%u)\n", rawLen, (unsigned)sizeof(A23CB0)); }
-#endif
-                }
-            }
+            if (g_AnswerHeader.cmd == 0xB0) { if (rawLen == sizeof(A23CB0)) memcpy(&g_S23CB0, frameBuf, rawLen); }
             else if (g_AnswerHeader.cmd == 0x23) { if (rawLen == sizeof(A23C23)) memcpy(&g_S23C23, frameBuf, rawLen); }
-            else if (g_AnswerHeader.cmd == 0x3A) {
-                if (rawLen == sizeof(A23C3A)) {
-                    memcpy(&g_S23C3A, frameBuf, rawLen);
-                } else if (rawLen >= 4) {
-                    // Some firmwares return longer (e.g., 0x0A) frame; take first 4 bytes.
-                    g_S23C3A.powerOnTime = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1] << 8);
-                    g_S23C3A.ridingTime  = (uint16_t)frameBuf[2] | ((uint16_t)frameBuf[3] << 8);
-#if M365_DECODE_DEBUG
-                    static int once3A=0; if(!once3A){ once3A=1; printf("[3A-PARTIAL] Accepted partial 0x3A frame rawLen=%u\n", rawLen); }
-#endif
-                }
-            }
+            else if (g_AnswerHeader.cmd == 0x3A) { if (rawLen == sizeof(A23C3A)) memcpy(&g_S23C3A, frameBuf, rawLen); }
             else if (g_AnswerHeader.cmd == 0x3E) { if (rawLen == sizeof(A23C3E)) memcpy(&g_S23C3E, frameBuf, rawLen); }
             else if (g_AnswerHeader.cmd == 0x3B) { if (rawLen == 2) { g_S23C3B.tripTimeSeconds = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1]<<8); } }
             else if (g_AnswerHeader.cmd == 0x1A) { if (rawLen == 2) { g_S23C1A.firmware = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1]<<8); } }

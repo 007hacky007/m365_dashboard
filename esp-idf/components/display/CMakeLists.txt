@@ -1,4 +1,4 @@
-idf_component_register(SRCS "u8g2_integration.c" "display_fsm_port.c"
+idf_component_register(SRCS "u8g2_integration.c" "display_fsm_port.c" "fonts_stdnum.c"
                        INCLUDE_DIRS "." "../m365_port" "../../../M365/fonts"
                        REQUIRES driver m365_port esp_timer u8g2-hal-esp-idf range settings aht10
                        PRIV_REQUIRES main)

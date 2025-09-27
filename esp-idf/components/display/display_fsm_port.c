@@ -27,12 +27,8 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 #endif
 
-// Integrate legacy Arduino numeric font (stdNumb) for nicer large digits.
-// Original header lives under M365/fonts/stdNumb.h. Provide minimal macro so it compiles in C.
-#ifndef GLCDFONTDECL
-#define GLCDFONTDECL(name) static const uint8_t name[]
-#endif
-#include "stdNumb.h"
+// Integrate legacy Arduino numeric font (stdNumb) for nicer large digits (definition in fonts_stdnum.c).
+#include "fonts_stdnum.h"
 
 // Force-enable input debug as requested (supports legacy/typo macro DUI_INPUT_DEBUG)
 #if defined(DUI_INPUT_DEBUG) && !defined(UI_INPUT_DEBUG)
@@ -65,7 +61,7 @@ static const char *TAG_UI_IN __attribute__((unused)) = "UIIN";
 // Bytes: 0,1 (unused), width (w), height (h), firstChar, count, then for each glyph: w*2 bytes (low byte column bits, then high byte column bits) => supports up to 16 rows; stdNumb uses 14.
 // We implement a simple renderer returning glyph pointer and drawing it column-wise.
 typedef struct { const uint8_t *base; uint8_t w; uint8_t h; uint8_t first; uint8_t count; } font_stdnum_t;
-static const font_stdnum_t g_stdnum = { stdNumb, stdNumb[2], stdNumb[3], stdNumb[4], stdNumb[5] };
+static const font_stdnum_t g_stdnum = { stdNumb, 10, 14, ' ', 27 };
 static inline const uint8_t* stdnum_glyph(char c){
     if ((uint8_t)c < g_stdnum.first || (uint8_t)c >= (uint8_t)(g_stdnum.first + g_stdnum.count)) c = ' ';
     uint8_t idx = (uint8_t)c - g_stdnum.first;
@@ -210,15 +206,9 @@ static uint16_t s_tripMaxCurrent_cA = 0;       // centi-amps
 static uint32_t s_tripMaxPower_Wx100 = 0;      // W *100
 static uint16_t s_tripMinVoltage_cV = 0xFFFF;  // centi-volts
 static uint16_t s_tripMaxVoltage_cV = 0;       // centi-volts
-// Legacy compatibility macro (disabled): #define durMs s_throttleLastDurationMs
-// Provide a legacy alias variable (uninitialized so it resolves to 0) for any
-// stale build system or conditional code path still expecting a file-scope
-// symbol named durMs. We intentionally do NOT initialize it from
-// s_throttleLastDurationMs because that is not a constant expression and
-// previously triggered: "initializer element is not constant" when a stale
-// copy attempted `= s_throttleLastDurationMs`. Runtime code (if any) should use
-// s_throttleLastDurationMs directly; this variable is kept only as a safety net.
-static uint32_t durMs __attribute__((unused));
+// Legacy compatibility: some stale builds referenced variable 'durMs'. It mapped to last throttle press duration.
+// If needed again, uncomment macro below (kept as comment to avoid non-constant initializer issues at file scope).
+// #define durMs s_throttleLastDurationMs
 
 // Forward decls for alt screens
 static void render_trip_stats_screen(void);
@@ -568,16 +558,16 @@ static void handle_screen_cycle(int speedRaw){
     // the raw state to be stable for the debounce interval before committing the
     // logical pressed/released state used for navigation.
 #ifndef THROTTLE_PRESS_DEBOUNCE_MS
-#define THROTTLE_PRESS_DEBOUNCE_MS   25   // faster screen cycle activation (was 40)
+#define THROTTLE_PRESS_DEBOUNCE_MS   40   // reduced from 100 to catch quick taps
 #endif
 #ifndef THROTTLE_RELEASE_DEBOUNCE_MS
-#define THROTTLE_RELEASE_DEBOUNCE_MS 45  // faster re-press (was 250)
+#define THROTTLE_RELEASE_DEBOUNCE_MS 250  // reduced from 600 to allow faster re-press
 #endif
 #ifndef BRAKE_PRESS_DEBOUNCE_MS
-#define BRAKE_PRESS_DEBOUNCE_MS      25
+#define BRAKE_PRESS_DEBOUNCE_MS      40
 #endif
 #ifndef BRAKE_RELEASE_DEBOUNCE_MS
-#define BRAKE_RELEASE_DEBOUNCE_MS    45
+#define BRAKE_RELEASE_DEBOUNCE_MS    60
 #endif
 
     uint32_t nowMs = millis();
@@ -697,8 +687,7 @@ static void handle_screen_cycle(int speedRaw){
     } else {
         s_stationarySince = 0; // reset when movement resumes
     }
-    // Shorter stationary requirement to allow quicker screen cycling (was 3000 ms)
-    const uint32_t STATIONARY_HOLD_MS = 2000; // 1.2s requirement
+    const uint32_t STATIONARY_HOLD_MS = 3000; // 3 seconds requirement
     bool allowScreenCycle = (s_stationarySince != 0) && (nowMs - s_stationarySince >= STATIONARY_HOLD_MS);
 
     if (stationary && allowScreenCycle){
