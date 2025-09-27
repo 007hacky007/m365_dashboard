@@ -43,6 +43,34 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        run: |
+          set -e
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth 1
+          echo "Listing component directories after submodule init:";
+          ls -1 esp-idf/components || true
+
+      - name: Fallback clone missing u8g2 components
+        run: |
+          set -e
+          NEED_CLONE=0
+          if [ ! -d esp-idf/components/u8g2 ]; then
+            echo "u8g2 submodule missing; cloning shallow copy.";
+            git clone --depth 1 https://github.com/olikraus/u8g2.git esp-idf/components/u8g2
+            NEED_CLONE=1
+          fi
+          if [ ! -d esp-idf/components/u8g2-hal-esp-idf ]; then
+            echo "u8g2-hal-esp-idf submodule missing; cloning shallow copy.";
+            git clone --depth 1 https://github.com/mkfrey/u8g2-hal-esp-idf.git esp-idf/components/u8g2-hal-esp-idf
+            NEED_CLONE=1
+          fi
+          if [ "$NEED_CLONE" = 1 ]; then
+            echo "Post-clone component directories:";
+            ls -1 esp-idf/components
+          fi
 
       - name: Setup ESP-IDF (manual)
         run: |
