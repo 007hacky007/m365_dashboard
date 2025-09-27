@@ -48,36 +48,33 @@ jobs:
           cd framework
           ./install.sh esp32c3
           echo "FRAMEWORK_DIR=$PWD" >> $GITHUB_ENV
-          echo "source $PWD/export.sh" >> $GITHUB_ENV
+          # Do not write 'source' lines to GITHUB_ENV (invalid); we will source explicitly in each step.
 
       - name: Show IDF version
         run: |
+          set -e
           . "$FRAMEWORK_DIR/export.sh"
           idf.py --version
 
       - name: Build (esp32c3)
         run: |
+          set -e
           . "$FRAMEWORK_DIR/export.sh"
-          # Prefer using project script (it sources its own env attempt, but we already exported)
           chmod +x scripts/build_local.sh
-          IDF_PATH="$FRAMEWORK_DIR" idf.py -C esp-idf set-target esp32c3 || true
-          IDF_PATH="$FRAMEWORK_DIR" scripts/build_local.sh || true
-          # Direct fallback to ensure build
-          if [ ! -f esp-idf/build/m365_dash_idf.bin ]; then
-            echo "Direct idf.py build fallback";
-            IDF_PATH="$FRAMEWORK_DIR" idf.py -C esp-idf set-target esp32c3
-            IDF_PATH="$FRAMEWORK_DIR" idf.py -C esp-idf build
-          fi
+          # Use project script (already sets target) but force target before to be explicit
+          IDF_PATH="$FRAMEWORK_DIR" idf.py -C esp-idf set-target esp32c3
+          IDF_PATH="$FRAMEWORK_DIR" scripts/build_local.sh
+          test -f esp-idf/build/m365_dash_idf.bin
 
       - name: Collect artifacts
         run: |
+          set -e
           mkdir -p ci-artifacts
-          cp -v esp-idf/build/m365_dash_idf.bin ci-artifacts/ || true
-          cp -v esp-idf/build/bootloader/bootloader.bin ci-artifacts/ || true
-          cp -v esp-idf/build/partition_table/partition-table.bin ci-artifacts/ || true
-          cp -v esp-idf/build/m365_dash_idf.elf ci-artifacts/ || true
+          cp -v esp-idf/build/m365_dash_idf.bin ci-artifacts/
+          cp -v esp-idf/build/bootloader/bootloader.bin ci-artifacts/
+          cp -v esp-idf/build/partition_table/partition-table.bin ci-artifacts/
+          cp -v esp-idf/build/m365_dash_idf.elf ci-artifacts/
           ls -l ci-artifacts
-          test -f ci-artifacts/m365_dash_idf.bin
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
