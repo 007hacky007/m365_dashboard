@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup ESP-IDF (manual)
         run: |
@@ -65,6 +67,11 @@ jobs:
           IDF_PATH="$FRAMEWORK_DIR" idf.py -C esp-idf set-target esp32c3
           IDF_PATH="$FRAMEWORK_DIR" scripts/build_local.sh
           test -f esp-idf/build/m365_dash_idf.bin
+      - name: List discovered components
+        run: |
+          find esp-idf/components -maxdepth 1 -type d -print
+          echo "---- CMake config log snippet ----" || true
+          grep -i "u8g2" -R esp-idf/build/CMakeCache.txt || true
 
       - name: Collect artifacts
         run: |
